@@ -34,6 +34,11 @@
   </div>
 
   <script>
+  const dateInput = document.getElementById("dateInput");
+
+  dateInput.addEventListener("click", () => {
+    dateInput.showPicker(); // opens the calendar immediately
+  });
     // Employee data (static)
     const EMPLOYEES = {
       'TS0002': 'Kavita Pandey',
