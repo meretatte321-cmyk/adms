@@ -17,12 +17,19 @@ const VALID_USER = {
 };
 
 // Session configuration
+// Trust proxy (needed when running behind Vercel / other proxies)
+app.set('trust proxy', 1);
+
+const IS_PROD = process.env.NODE_ENV === 'production';
+
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: true,
-  cookie: { 
-    secure: false, // Set to true if using HTTPS
+  cookie: {
+    secure: IS_PROD, // send cookie only over HTTPS when in production
+    httpOnly: true,
+    sameSite: IS_PROD ? 'none' : 'lax', // allow cross-site cookie when behind proxy/production
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
