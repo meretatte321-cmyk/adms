@@ -214,7 +214,7 @@
     // Check if user is authenticated
     async function checkAuthentication() {
       try {
-  const response = await fetch('/api/auth-status', { credentials: 'include' });
+        const response = await fetch('/api/auth-status');
         const data = await response.json();
         
         if (!data.authenticated) {
@@ -236,10 +236,9 @@
     // Logout function
     async function logout() {
       try {
-  const response = await fetch('/api/logout', {
-  method: 'POST',
-  credentials: 'include'
-  });
+        const response = await fetch('/api/logout', {
+          method: 'POST'
+        });
         
         if (response.ok) {
           // Redirect to login page
@@ -314,7 +313,6 @@
     async function fetchDeviceLogs(date) {
       const response = await fetch(API_URL, {
         method: 'POST',
-        credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         },
@@ -549,7 +547,6 @@
         // Fetch consolidated monthly data from backend
         const response = await fetch('/api/monthly-attendance', {
           method: 'POST',
-          credentials: 'include',
           headers: {
             'Content-Type': 'application/json'
           },
