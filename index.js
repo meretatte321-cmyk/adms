@@ -1,36 +1,32 @@
 const express = require('express');
+// Load environment variables from .env if present
+require('dotenv').config();
 const cors = require('cors');
 const fetch = require('node-fetch');
 const path = require('path');
 const session = require('express-session');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // ==================== SESSION & AUTH CONFIG ====================
-const SESSION_SECRET = '5dae7cfb6ef763d63b6d4fecef8da686cfd44d40fb8e7dfbcf80f07fa49faf5b8a42635f91d9f4ef7cce121fcd7caa631265328f12fd900520e68de1c2947bec';
+// Read sensitive values from environment variables with sensible defaults
+const SESSION_SECRET = process.env.SESSION_SECRET || 'change_this_to_a_strong_secret_in_production';
 
-// Static user credentials
+// Static user credentials (move to env for production)
 const VALID_USER = {
-  username: 'admin',
-  password: 'HRMSOOTR@123'
+  username: process.env.VALID_USER_USERNAME || 'admin',
+  password: process.env.VALID_USER_PASSWORD || 'admin123'
 };
 
 // Session configuration
-// Trust proxy (needed when running behind Vercel / other proxies)
-app.set('trust proxy', 1);
-
-const IS_PROD = process.env.NODE_ENV === 'production';
-
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: true,
   cookie: {
-    secure: IS_PROD, // send cookie only over HTTPS when in production
-    httpOnly: true,
-    sameSite: IS_PROD ? 'none' : 'lax', // allow cross-site cookie when behind proxy/production
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    secure: process.env.COOKIE_SECURE === 'true' || false, // set to true when using HTTPS
+    maxAge: parseInt(process.env.SESSION_MAX_AGE, 10) || 24 * 60 * 60 * 1000 // default 24 hours
   }
 }));
 
@@ -40,11 +36,11 @@ app.use(express.json());
 app.use(express.text({ type: 'text/xml' }));
 app.use(express.static('public'));
 
-// API Configuration
-const API_URL = 'http://iclock.iserviceforce.com/webservice.asmx';
-const USERNAME = 'essl';
-const PASSWORD = 'essl';
-const LOCATION = '00009';
+// API Configuration (can be overridden via environment variables)
+const API_URL = process.env.API_URL || 'http://iclock.iserviceforce.com/webservice.asmx';
+const USERNAME = process.env.API_USERNAME || 'essl';
+const PASSWORD = process.env.API_PASSWORD || 'essl';
+const LOCATION = process.env.API_LOCATION || '00009';
 
 // ==================== AUTH MIDDLEWARE ====================
 function isAuthenticated(req, res, next) {
