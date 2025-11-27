@@ -5,6 +5,8 @@ const cors = require('cors');
 const fetch = require('node-fetch');
 const path = require('path');
 const session = require('express-session');
+const redis = require('redis');
+const RedisStore = require('connect-redis').default;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +15,40 @@ const PORT = process.env.PORT || 3000;
 // Read sensitive values from environment variables with sensible defaults
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change_this_to_a_strong_secret_in_production';
 
+// Redis configuration
+const REDIS_URL = process.env.REDIS_URL;
+let redisClient;
+let sessionStore;
+
+// Initialize Redis client if REDIS_URL is provided
+if (REDIS_URL) {
+  redisClient = redis.createClient({
+    url: REDIS_URL,
+    legacyMode: false
+  });
+
+  redisClient.connect().catch(err => {
+    console.error('Redis connection error:', err);
+    process.exit(1);
+  });
+
+  redisClient.on('error', (err) => {
+    console.error('Redis error:', err);
+  });
+
+  redisClient.on('connect', () => {
+    console.log('Connected to Redis successfully');
+  });
+
+  // Create Redis session store
+  sessionStore = new RedisStore({
+    client: redisClient,
+    prefix: 'adms:session:'
+  });
+} else {
+  console.warn('REDIS_URL not provided. Using default in-memory session store. This is NOT suitable for production.');
+}
+
 // Static user credentials (move to env for production)
 const VALID_USER = {
   username: process.env.VALID_USER_USERNAME || 'admin',
@@ -20,7 +56,7 @@ const VALID_USER = {
 };
 
 // Session configuration
-app.use(session({
+const sessionConfig = {
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: true,
@@ -28,7 +64,14 @@ app.use(session({
     secure: process.env.COOKIE_SECURE === 'true' || false, // set to true when using HTTPS
     maxAge: parseInt(process.env.SESSION_MAX_AGE, 10) || 24 * 60 * 60 * 1000 // default 24 hours
   }
-}));
+};
+
+// Add Redis store if available
+if (sessionStore) {
+  sessionConfig.store = sessionStore;
+}
+
+app.use(session(sessionConfig));
 
 // Middleware
 app.use(cors());
