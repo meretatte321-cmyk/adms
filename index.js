@@ -147,6 +147,70 @@ app.get('/api/auth-status', (req, res) => {
 
 // ==================== PROTECTED API ENDPOINTS ====================
 
+// Get list of all employees
+app.get('/api/employees', isAuthenticated, (req, res) => {
+  const EMPLOYEES = {
+    'TS0002': 'Kavita Pandey',
+    'TS0003': 'Chakresh Mahobiya',
+    'TS0004': 'Ravikant Dixit',
+    'TS0005': 'Ram K Gautam',
+    'TS0006': 'Suraj Kumar',
+    'TS0007': 'Ravi Awasthi',
+    'TS0008': 'Deepti Sarathe',
+    'TS0009': 'Arpita Prajapati',
+    'TS0010': 'Manya Jain',
+    'TS0011': 'Kaushiki Gautam',
+    'TS0012': 'Sourabh Bhatnagar',
+    'TS0013': 'Rohit Sahu',
+    'TS0014': 'Gourav Wani',
+    'TS0015': 'Arshan Ghouri',
+    'TS0016': 'Jatin Prajapati',
+    'TS0017': 'Aman das',
+    'TS0018': 'Arman Kacher',
+    'TS0019': 'Ilman Khan',
+    'TS0020': 'Shifa Raine',
+    'TS0021': 'Saeed Khan',
+    'TS0022': 'Muskan Mishra',
+    'TS0023': 'Supriya Soni',
+    'TS0024': 'kajal Priya',
+    'TS0025': 'Atul Kumar Dwivedi',
+    'TS0026': 'neeraj sharma',
+    'TS0027': 'Rahul Raghuwanshi',
+    'TS0028': 'Kuldeep Shrivastava',
+    'TS0029': 'Harikesh Dwivedi',
+    'TS0030': 'Shivendra Dwivedi',
+    'TS0031': 'Sunil Rathore',
+    'TS0032': 'jitendra Shrivastava',
+    'TS0033': 'Manish Kumar',
+    'TS0034': 'Bilal khan',
+    'TS0035': 'Sanjay Sharma',
+    'TS0036': 'Chatrupa Goud',
+    'TS0037': 'Sandeep Mishra',
+    'TS0038': 'srishti Bangde',
+    'TS0039': 'Nishi Bhargava',
+    'TS0045': 'Anil Sharma',
+    'TS0053': 'Manju Jonwal',
+    'TS0056': 'Amresh Kushwaha',
+    'TS0057': 'Sanjay Dhiman',
+    'TS0058': 'Siddharth raikwar',
+    'TS0070': 'Ruma Akhtar',
+    'TS0072': 'Sanjeet Kumar Dhurwey',
+    'TS0078': 'Ansh Jain',
+    'TS0079': 'Ramanand Tiwari',
+    'TS0080': 'Swatantra Kumar Shukla',
+    'TS0082': 'Dablu Kumar',
+    'TS0083': 'Sachin Malviya',
+    'TS0084': 'Anjali Dwivedi'
+  };
+
+  const employeeList = Object.entries(EMPLOYEES).map(([pin, name]) => ({
+    pin,
+    name
+  })).sort((a, b) => a.pin.localeCompare(b.pin));
+
+  res.json(employeeList);
+});
+
 // Proxy endpoint for daily SOAP requests
 app.post('/api/attendance', isAuthenticated, async (req, res) => {
   try {
@@ -225,6 +289,54 @@ app.post('/api/monthly-attendance', isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Error fetching monthly attendance:', error);
     res.status(500).json({ error: 'Failed to fetch monthly attendance data' });
+  }
+});
+
+// Single employee monthly attendance endpoint
+app.post('/api/employee-attendance', isAuthenticated, async (req, res) => {
+  try {
+    const { empCode, yearMonth } = req.body;
+    
+    if (!empCode || !yearMonth) {
+      return res.status(400).json({ error: 'Employee code and year-month are required' });
+    }
+
+    const [year, month] = yearMonth.split('-');
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    // Create promises for all dates
+    const datePromises = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      datePromises.push(fetchAttendanceForDate(date));
+    }
+    
+    // Fetch all dates in parallel
+    const logsArray = await Promise.all(datePromises);
+    
+    // Consolidate data for the specific employee
+    const employeeData = {
+      pin: empCode,
+      name: getEmployeeName(empCode),
+      dailyRecords: {}
+    };
+    
+    for (let i = 0; i < logsArray.length; i++) {
+      const date = `${year}-${String(month).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
+      const attendanceRecords = processAttendanceLogs(logsArray[i], date);
+      
+      // Find records for this specific employee
+      const empRecord = attendanceRecords.find(record => record.pin === empCode);
+      if (empRecord) {
+        employeeData.dailyRecords[date] = empRecord;
+      }
+    }
+    
+    res.json(employeeData);
+    
+  } catch (error) {
+    console.error('Error fetching employee attendance:', error);
+    res.status(500).json({ error: 'Failed to fetch employee attendance data' });
   }
 });
 
