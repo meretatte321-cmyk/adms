@@ -489,55 +489,31 @@
     function formatTime(timestamp) {
       if (!timestamp) return '-';
       
-      // Parse ISO string and convert UTC to Indian Standard Time (UTC+5:30)
+      // Parse ISO string directly to avoid timezone issues
       // ISO format: YYYY-MM-DDTHH:MM:SS.sssZ
       if (typeof timestamp === 'string') {
-        // Remove the 'Z' and split
-        const cleanTimestamp = timestamp.replace('Z', '');
-        const timePart = cleanTimestamp.split('T')[1]; // Get "HH:MM:SS.sss"
+        // Extract time part from ISO string (HH:MM:SS)
+        const timePart = timestamp.split('T')[1]; // Get "HH:MM:SS.sssZ"
         const [hours, minutes, secondsWithMs] = timePart.split(':');
-        let utcHours = parseInt(hours);
-        let utcMinutes = parseInt(minutes);
         const seconds = Math.floor(parseFloat(secondsWithMs));
         
-        // Convert UTC to IST (UTC + 5:30)
-        utcMinutes += 30;
-        if (utcMinutes >= 60) {
-          utcHours += 1;
-          utcMinutes -= 60;
-        }
-        utcHours += 5;
-        if (utcHours >= 24) {
-          utcHours -= 24;
-        }
+        const hour = parseInt(hours);
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const displayHours = hour % 12 || 12;
         
-        const period = utcHours >= 12 ? 'PM' : 'AM';
-        const displayHours = utcHours % 12 || 12;
-        
-        return `${String(displayHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period} (IST)`;
+        return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period}`;
       }
       
-      // Fallback for Date objects - convert UTC to IST
+      // Fallback for Date objects
       const date = new Date(timestamp);
-      let hours = date.getUTCHours();
-      let minutes = date.getUTCMinutes();
-      const seconds = date.getUTCSeconds();
-      
-      // Convert UTC to IST (UTC + 5:30)
-      minutes += 30;
-      if (minutes >= 60) {
-        hours += 1;
-        minutes -= 60;
-      }
-      hours += 5;
-      if (hours >= 24) {
-        hours -= 24;
-      }
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const seconds = date.getSeconds();
       
       const period = hours >= 12 ? 'PM' : 'AM';
       const displayHours = hours % 12 || 12;
       
-      return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period} (IST)`;
+      return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period}`;
     }
 
     function formatDate(dateStr) {
