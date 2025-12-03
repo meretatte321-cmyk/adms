@@ -413,7 +413,13 @@ function processAttendanceLogs(xmlText, date) {
     
     for (const [empCode, timestamps] of Object.entries(employeeLogs)) {
       // Convert timestamps to Date objects for sorting
-      const dateObjects = timestamps.map(ts => new Date(ts));
+      // The timestamps from device are in format like "2025-12-04 09:45:30" which is in UTC
+      // We need to parse them as UTC, not local time
+      const dateObjects = timestamps.map(ts => {
+        // Replace space with T to make it ISO-like format, then add Z for UTC
+        const isoFormat = ts.replace(' ', 'T') + 'Z';
+        return new Date(isoFormat);
+      });
       dateObjects.sort((a, b) => a - b);
       
       const firstPunch = dateObjects[0];
