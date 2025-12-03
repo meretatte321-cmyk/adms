@@ -200,7 +200,8 @@ app.get('/api/employees', isAuthenticated, (req, res) => {
     'TS0080': 'Swatantra Kumar Shukla',
     'TS0082': 'Dablu Kumar',
     'TS0083': 'Sachin Malviya',
-    'TS0084': 'Anjali Dwivedi'
+    'TS0084': 'Anjali Dwivedi',
+    '85': 'Ayush Sen'
   };
 
   const employeeList = Object.entries(EMPLOYEES).map(([pin, name]) => ({
