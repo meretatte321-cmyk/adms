@@ -193,7 +193,8 @@
       'TS0080': 'Swatantra Kumar Shukla',
       'TS0082': 'Dablu Kumar',
       'TS0083': 'Sachin Malviya',
-      'TS0084': 'Anjali Dwivedi'
+      'TS0084': 'Anjali Dwivedi',
+      '85': 'Ayush Sen'
     };
 
     // Configuration
@@ -336,60 +337,66 @@
     }
 
     function processAttendanceLogs(logsText, date) {
-      if (!logsText || logsText.trim() === '') {
-        return [];
-      }
+  if (!logsText || logsText.trim() === '') {
+    return [];
+  }
 
-      const lines = logsText.trim().split('\n').filter(line => line.trim());
-      const employeeLogs = {};
+  const lines = logsText.trim().split('\n').filter(line => line.trim());
+  const employeeLogs = {};
 
-      // Parse each log entry
-      lines.forEach(line => {
-        const parts = line.split(',');
-        if (parts.length < 5) return;
+  // Parse each log entry
+  lines.forEach(line => {
+    const parts = line.split(',');
+    if (parts.length < 5) return;
 
-        const timestamp = parts[0].trim();
-        const empCode = parts[1].trim();
-        
-        if (!employeeLogs[empCode]) {
-          employeeLogs[empCode] = [];
-        }
-        employeeLogs[empCode].push(new Date(timestamp));
-      });
-
-      // Calculate attendance for each employee
-      const attendanceRecords = [];
-      
-      for (const [empCode, timestamps] of Object.entries(employeeLogs)) {
-        timestamps.sort((a, b) => a - b);
-        
-        const firstPunch = timestamps[0];
-        const lastPunch = timestamps[timestamps.length - 1];
-        const durationMs = lastPunch - firstPunch;
-        const durationMinutes = Math.floor(durationMs / 60000);
-        const durationHours = durationMinutes / 60;
-
-        let status;
-        if (durationHours >= 6) {
-          status = 'PRESENT';
-        } else if (durationHours > 0) {
-          status = 'SHORT';
-        } else {
-          status = 'ABSENT';
-        }
-
-        attendanceRecords.push({
-          pin: empCode,
-          name: EMPLOYEES[empCode] || 'Unknown',
-          first_ts: firstPunch.toISOString(),
-          last_ts: lastPunch.toISOString(),
-          duration_minutes: durationMinutes,
-          status: status
-        });
-      }
-
-      return attendanceRecords;
+    const timestamp = parts[0].trim();
+    const empCode = parts[1].trim();
+    
+    if (!employeeLogs[empCode]) {
+      employeeLogs[empCode] = [];
     }
+    // Store timestamp strings directly, not Date objects
+    employeeLogs[empCode].push(timestamp);
+  });
+
+  // Calculate attendance for each employee
+  const attendanceRecords = [];
+  
+  for (const [empCode, timestamps] of Object.entries(employeeLogs)) {
+    // Sort timestamp strings chronologically
+    timestamps.sort();
+    
+    const firstTimestamp = timestamps[0];
+    const lastTimestamp = timestamps[timestamps.length - 1];
+    
+    // Parse timestamps to calculate duration
+    const firstDate = new Date(firstTimestamp);
+    const lastDate = new Date(lastTimestamp);
+    const durationMs = lastDate - firstDate;
+    const durationMinutes = Math.floor(durationMs / 60000);
+    const durationHours = durationMinutes / 60;
+
+    let status;
+    if (durationHours >= 6) {
+      status = 'PRESENT';
+    } else if (durationHours > 0) {
+      status = 'SHORT';
+    } else {
+      status = 'ABSENT';
+    }
+
+    attendanceRecords.push({
+      pin: empCode,
+      name: EMPLOYEES[empCode] || 'Unknown',
+      first_ts: firstTimestamp,  // Store raw timestamp string
+      last_ts: lastTimestamp,    // Store raw timestamp string
+      duration_minutes: durationMinutes,
+      status: status
+    });
+  }
+
+  return attendanceRecords;
+}
 
     function displayResults(data, date) {
       const resultsSection = document.getElementById('resultsSection');
