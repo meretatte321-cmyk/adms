@@ -200,8 +200,7 @@ app.get('/api/employees', isAuthenticated, (req, res) => {
     'TS0080': 'Swatantra Kumar Shukla',
     'TS0082': 'Dablu Kumar',
     'TS0083': 'Sachin Malviya',
-    'TS0084': 'Anjali Dwivedi',
-    '85': 'Ayush Sen'
+    'TS0084': 'Anjali Dwivedi'
   };
 
   const employeeList = Object.entries(EMPLOYEES).map(([pin, name]) => ({
@@ -405,17 +404,20 @@ function processAttendanceLogs(xmlText, date) {
       if (!employeeLogs[empCode]) {
         employeeLogs[empCode] = [];
       }
-      employeeLogs[empCode].push(new Date(timestamp));
+      // Store the raw timestamp string as-is (it's already in UTC format from the device)
+      employeeLogs[empCode].push(timestamp);
     });
 
     // Calculate attendance for each employee
     const attendanceRecords = [];
     
     for (const [empCode, timestamps] of Object.entries(employeeLogs)) {
-      timestamps.sort((a, b) => a - b);
+      // Convert timestamps to Date objects for sorting
+      const dateObjects = timestamps.map(ts => new Date(ts));
+      dateObjects.sort((a, b) => a - b);
       
-      const firstPunch = timestamps[0];
-      const lastPunch = timestamps[timestamps.length - 1];
+      const firstPunch = dateObjects[0];
+      const lastPunch = dateObjects[dateObjects.length - 1];
       const durationMs = lastPunch - firstPunch;
       const durationMinutes = Math.floor(durationMs / 60000);
       const durationHours = durationMinutes / 60;
@@ -445,7 +447,6 @@ function processAttendanceLogs(xmlText, date) {
     return [];
   }
 }
-// new code
 
 // Helper function to get employee name
 function getEmployeeName(empCode) {
@@ -500,8 +501,7 @@ function getEmployeeName(empCode) {
     'TS0080': 'Swatantra Kumar Shukla',
     'TS0082': 'Dablu Kumar',
     'TS0083': 'Sachin Malviya',
-    'TS0084': 'Anjali Dwivedi',
-    '85': 'Ayush Sen'
+    'TS0084': 'Anjali Dwivedi'
   };
   return EMPLOYEES[empCode] || 'Unknown';
 }
