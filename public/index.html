@@ -492,34 +492,77 @@ function processAttendanceLogs(logsText, date) {
       return `${hours}h ${mins}m`;
     }
 
+    // function formatTime(timestamp) {
+    //   if (!timestamp) return '-';
+      
+    //   // Parse ISO string directly to avoid timezone issues
+    //   // ISO format: YYYY-MM-DDTHH:MM:SS.sssZ
+    //   if (typeof timestamp === 'string') {
+    //     // Extract time part from ISO string (HH:MM:SS)
+    //     const timePart = timestamp.split('T')[1]; // Get "HH:MM:SS.sssZ"
+    //     const [hours, minutes, secondsWithMs] = timePart.split(':');
+    //     const seconds = Math.floor(parseFloat(secondsWithMs));
+        
+    //     const hour = parseInt(hours);
+    //     const period = hour >= 12 ? 'PM' : 'AM';
+    //     const displayHours = hour % 12 || 12;
+        
+    //     return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period}`;
+    //   }
+      
+    //   // Fallback for Date objects
+    //   const date = new Date(timestamp);
+    //   const hours = date.getHours();
+    //   const minutes = date.getMinutes();
+    //   const seconds = date.getSeconds();
+      
+    //   const period = hours >= 12 ? 'PM' : 'AM';
+    //   const displayHours = hours % 12 || 12;
+      
+    //   return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period}`;
+    // }
     function formatTime(timestamp) {
       if (!timestamp) return '-';
       
-      // Parse ISO string directly to avoid timezone issues
-      // ISO format: YYYY-MM-DDTHH:MM:SS.sssZ
+      let timeString = '';
+      
+      // Handle ISO format strings (e.g., "2024-12-04T09:30:45")
       if (typeof timestamp === 'string') {
-        // Extract time part from ISO string (HH:MM:SS)
-        const timePart = timestamp.split('T')[1]; // Get "HH:MM:SS.sssZ"
-        const [hours, minutes, secondsWithMs] = timePart.split(':');
-        const seconds = Math.floor(parseFloat(secondsWithMs));
+        // Check if it contains 'T' (ISO format)
+        if (timestamp.includes('T')) {
+          // Extract time part: "09:30:45" or "09:30:45.123"
+          const timePart = timestamp.split('T')[1]; // "09:30:45.123Z" or "09:30:45"
+          
+          // Remove timezone indicator (Z or +/-HH:MM)
+          const cleanTimePart = timePart.split('Z')[0].split('+')[0].split('-')[0];
+          
+          // Split by colon to get hours, minutes, seconds
+          const [hours, minutes, secondsWithMs] = cleanTimePart.split(':');
+          const seconds = Math.floor(parseFloat(secondsWithMs));
+          
+          // Format to 12-hour with AM/PM
+          const hour = parseInt(hours);
+          const period = hour >= 12 ? 'PM' : 'AM';
+          const displayHours = hour % 12 || 12;
+          
+          timeString = `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period}`;
+        } else {
+          // If it's not ISO format, try to parse it as-is
+          return timestamp;
+        }
+      } else if (timestamp instanceof Date) {
+        // Handle Date objects (extract local time without timezone conversion)
+        const hours = timestamp.getHours();
+        const minutes = timestamp.getMinutes();
+        const seconds = timestamp.getSeconds();
         
-        const hour = parseInt(hours);
-        const period = hour >= 12 ? 'PM' : 'AM';
-        const displayHours = hour % 12 || 12;
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
         
-        return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period}`;
+        timeString = `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period}`;
       }
       
-      // Fallback for Date objects
-      const date = new Date(timestamp);
-      const hours = date.getHours();
-      const minutes = date.getMinutes();
-      const seconds = date.getSeconds();
-      
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours % 12 || 12;
-      
-      return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period}`;
+      return timeString || '-';
     }
 
     function formatDate(dateStr) {
