@@ -373,6 +373,80 @@ async function fetchAttendanceForDate(date) {
 }
 
 // Helper function to process attendance logs
+// function processAttendanceLogs(xmlText, date) {
+//   if (!xmlText || xmlText.trim() === '') {
+//     return [];
+//   }
+
+//   try {
+//     // Parse XML response to extract logs text
+//     const startTag = '<GetDeviceLogsResult>';
+//     const endTag = '</GetDeviceLogsResult>';
+//     const startIndex = xmlText.indexOf(startTag);
+//     const endIndex = xmlText.indexOf(endTag);
+    
+//     if (startIndex === -1 || endIndex === -1) {
+//       return [];
+//     }
+    
+//     const logsText = xmlText.substring(startIndex + startTag.length, endIndex);
+//     const lines = logsText.trim().split('\n').filter(line => line.trim());
+    
+//     const employeeLogs = {};
+
+//     // Parse each log entry
+//     lines.forEach(line => {
+//       const parts = line.split(',');
+//       if (parts.length < 5) return;
+
+//       const timestamp = parts[0].trim();
+//       const empCode = parts[1].trim();
+      
+//       if (!employeeLogs[empCode]) {
+//         employeeLogs[empCode] = [];
+//       }
+//       employeeLogs[empCode].push(new Date(timestamp));
+//     });
+
+//     // Calculate attendance for each employee
+//     const attendanceRecords = [];
+    
+//     for (const [empCode, timestamps] of Object.entries(employeeLogs)) {
+//       timestamps.sort((a, b) => a - b);
+      
+//       const firstPunch = timestamps[0];
+//       const lastPunch = timestamps[timestamps.length - 1];
+//       const durationMs = lastPunch - firstPunch;
+//       const durationMinutes = Math.floor(durationMs / 60000);
+//       const durationHours = durationMinutes / 60;
+
+//       let status;
+//       if (durationHours >= 6) {
+//         status = 'PRESENT';
+//       } else if (durationHours > 0) {
+//         status = 'SHORT';
+//       } else {
+//         status = 'ABSENT';
+//       }
+
+//       attendanceRecords.push({
+//         pin: empCode,
+//         name: getEmployeeName(empCode),
+//         first_ts: firstPunch.toISOString(),
+//         last_ts: lastPunch.toISOString(),
+//         duration_minutes: durationMinutes,
+//         status: status
+//       });
+//     }
+
+//     return attendanceRecords;
+//   } catch (error) {
+//     console.error('Error processing attendance logs:', error);
+//     return [];
+//   }
+// }
+// new code
+// Helper function to process attendance logs
 function processAttendanceLogs(xmlText, date) {
   if (!xmlText || xmlText.trim() === '') {
     return [];
@@ -394,7 +468,7 @@ function processAttendanceLogs(xmlText, date) {
     
     const employeeLogs = {};
 
-    // Parse each log entry
+    // Parse each log entry - store ORIGINAL timestamp strings
     lines.forEach(line => {
       const parts = line.split(',');
       if (parts.length < 5) return;
@@ -405,17 +479,20 @@ function processAttendanceLogs(xmlText, date) {
       if (!employeeLogs[empCode]) {
         employeeLogs[empCode] = [];
       }
-      employeeLogs[empCode].push(new Date(timestamp));
+      // Store the original string, not a Date object
+      employeeLogs[empCode].push(timestamp);
     });
 
     // Calculate attendance for each employee
     const attendanceRecords = [];
     
     for (const [empCode, timestamps] of Object.entries(employeeLogs)) {
-      timestamps.sort((a, b) => a - b);
+      // Convert to Date objects ONLY for sorting and duration calculation
+      const timestampDates = timestamps.map(ts => new Date(ts));
+      timestampDates.sort((a, b) => a - b);
       
-      const firstPunch = timestamps[0];
-      const lastPunch = timestamps[timestamps.length - 1];
+      const firstPunch = timestampDates[0];
+      const lastPunch = timestampDates[timestampDates.length - 1];
       const durationMs = lastPunch - firstPunch;
       const durationMinutes = Math.floor(durationMs / 60000);
       const durationHours = durationMinutes / 60;
@@ -429,11 +506,30 @@ function processAttendanceLogs(xmlText, date) {
         status = 'ABSENT';
       }
 
+      // Get the original timestamp strings (maintain original format)
+      // Find the earliest and latest by comparing the Date objects we created
+      let firstTimestampStr = timestamps[0];
+      let lastTimestampStr = timestamps[timestamps.length - 1];
+      
+      // Re-map to find original strings corresponding to sorted dates
+      for (let i = 0; i < timestamps.length; i++) {
+        if (new Date(timestamps[i]).getTime() === firstPunch.getTime()) {
+          firstTimestampStr = timestamps[i];
+          break;
+        }
+      }
+      for (let i = timestamps.length - 1; i >= 0; i--) {
+        if (new Date(timestamps[i]).getTime() === lastPunch.getTime()) {
+          lastTimestampStr = timestamps[i];
+          break;
+        }
+      }
+
       attendanceRecords.push({
         pin: empCode,
         name: getEmployeeName(empCode),
-        first_ts: firstPunch.toISOString(),
-        last_ts: lastPunch.toISOString(),
+        first_ts: firstTimestampStr,  // Original timestamp string
+        last_ts: lastTimestampStr,    // Original timestamp string
         duration_minutes: durationMinutes,
         status: status
       });
@@ -445,7 +541,6 @@ function processAttendanceLogs(xmlText, date) {
     return [];
   }
 }
-
 // Helper function to get employee name
 function getEmployeeName(empCode) {
   const EMPLOYEES = {
