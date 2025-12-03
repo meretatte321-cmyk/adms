@@ -336,7 +336,8 @@
       return resultNode.textContent;
     }
 
-    function processAttendanceLogs(logsText, date) {
+    // In the processAttendanceLogs function, store the original timestamp strings:
+function processAttendanceLogs(logsText, date) {
   if (!logsText || logsText.trim() === '') {
     return [];
   }
@@ -355,7 +356,7 @@
     if (!employeeLogs[empCode]) {
       employeeLogs[empCode] = [];
     }
-    // Store timestamp strings directly, not Date objects
+    // Store the original timestamp string, not a Date object
     employeeLogs[empCode].push(timestamp);
   });
 
@@ -363,16 +364,13 @@
   const attendanceRecords = [];
   
   for (const [empCode, timestamps] of Object.entries(employeeLogs)) {
-    // Sort timestamp strings chronologically
-    timestamps.sort();
+    // Convert to Date objects only for sorting and calculation
+    const timestampDates = timestamps.map(ts => new Date(ts));
+    timestampDates.sort((a, b) => a - b);
     
-    const firstTimestamp = timestamps[0];
-    const lastTimestamp = timestamps[timestamps.length - 1];
-    
-    // Parse timestamps to calculate duration
-    const firstDate = new Date(firstTimestamp);
-    const lastDate = new Date(lastTimestamp);
-    const durationMs = lastDate - firstDate;
+    const firstPunch = timestampDates[0];
+    const lastPunch = timestampDates[timestampDates.length - 1];
+    const durationMs = lastPunch - firstPunch;
     const durationMinutes = Math.floor(durationMs / 60000);
     const durationHours = durationMinutes / 60;
 
@@ -385,12 +383,12 @@
       status = 'ABSENT';
     }
 
-    // Ensure timestamps are valid strings
     attendanceRecords.push({
       pin: empCode,
       name: EMPLOYEES[empCode] || 'Unknown',
-      first_ts: firstTimestamp || '',
-      last_ts: lastTimestamp || '',
+      // Store ISO strings instead of Date objects
+      first_ts: firstPunch.toISOString(),
+      last_ts: lastPunch.toISOString(),
       duration_minutes: durationMinutes,
       status: status
     });
