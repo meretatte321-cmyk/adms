@@ -496,57 +496,70 @@
     }
 
     function formatTime(timestamp) {
-      if (!timestamp) return '-';
+      // if (!timestamp) return '-';
       
-      // Parse ISO string and convert UTC to Indian Standard Time (UTC+5:30)
-      // ISO format: YYYY-MM-DDTHH:MM:SS.sssZ
-      if (typeof timestamp === 'string') {
-        // Remove the 'Z' and split
-        const cleanTimestamp = timestamp.replace('Z', '');
-        const timePart = cleanTimestamp.split('T')[1]; // Get "HH:MM:SS.sss"
-        const [hours, minutes, secondsWithMs] = timePart.split(':');
-        let utcHours = parseInt(hours);
-        let utcMinutes = parseInt(minutes);
-        const seconds = Math.floor(parseFloat(secondsWithMs));
+      // // Parse ISO string and convert UTC to Indian Standard Time (UTC+5:30)
+      // // ISO format: YYYY-MM-DDTHH:MM:SS.sssZ
+      // if (typeof timestamp === 'string') {
+      //   // Remove the 'Z' and split
+      //   const cleanTimestamp = timestamp.replace('Z', '');
+      //   const timePart = cleanTimestamp.split('T')[1]; // Get "HH:MM:SS.sss"
+      //   const [hours, minutes, secondsWithMs] = timePart.split(':');
+      //   let utcHours = parseInt(hours);
+      //   let utcMinutes = parseInt(minutes);
+      //   const seconds = Math.floor(parseFloat(secondsWithMs));
         
-        // Convert UTC to IST (UTC + 5:30)
-        utcMinutes += 30;
-        if (utcMinutes >= 60) {
-          utcHours += 1;
-          utcMinutes -= 60;
-        }
-        utcHours += 5;
-        if (utcHours >= 24) {
-          utcHours -= 24;
-        }
+      //   // Convert UTC to IST (UTC + 5:30)
+      //   utcMinutes += 30;
+      //   if (utcMinutes >= 60) {
+      //     utcHours += 1;
+      //     utcMinutes -= 60;
+      //   }
+      //   utcHours += 5;
+      //   if (utcHours >= 24) {
+      //     utcHours -= 24;
+      //   }
         
-        const period = utcHours >= 12 ? 'PM' : 'AM';
-        const displayHours = utcHours % 12 || 12;
+      //   const period = utcHours >= 12 ? 'PM' : 'AM';
+      //   const displayHours = utcHours % 12 || 12;
         
-        return `${String(displayHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period} (IST)`;
-      }
+      //   return `${String(displayHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period} (IST)`;
+      // }
       
-      // Fallback for Date objects - convert UTC to IST
-      const date = new Date(timestamp);
-      let hours = date.getUTCHours();
-      let minutes = date.getUTCMinutes();
-      const seconds = date.getUTCSeconds();
+      // // Fallback for Date objects - convert UTC to IST
+      // const date = new Date(timestamp);
+      // let hours = date.getUTCHours();
+      // let minutes = date.getUTCMinutes();
+      // const seconds = date.getUTCSeconds();
       
-      // Convert UTC to IST (UTC + 5:30)
-      minutes += 30;
-      if (minutes >= 60) {
-        hours += 1;
-        minutes -= 60;
-      }
-      hours += 5;
-      if (hours >= 24) {
-        hours -= 24;
-      }
+      // // Convert UTC to IST (UTC + 5:30)
+      // minutes += 30;
+      // if (minutes >= 60) {
+      //   hours += 1;
+      //   minutes -= 60;
+      // }
+      // hours += 5;
+      // if (hours >= 24) {
+      //   hours -= 24;
+      // }
       
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours % 12 || 12;
+      // const period = hours >= 12 ? 'PM' : 'AM';
+      // const displayHours = hours % 12 || 12;
       
-      return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period} (IST)`;
+      // return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period} (IST)`;
+          if (!timestamp) return '-';
+
+    // Ensure it's treated as UTC
+    const date = new Date(timestamp);
+
+    // Format in Indian Standard Time
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    }).format(date) + ' (IST)';
     }
 
     function formatDate(dateStr) {
