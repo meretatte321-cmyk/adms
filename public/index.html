@@ -385,11 +385,12 @@
       status = 'ABSENT';
     }
 
+    // Ensure timestamps are valid strings
     attendanceRecords.push({
       pin: empCode,
       name: EMPLOYEES[empCode] || 'Unknown',
-      first_ts: firstTimestamp,  // Store raw timestamp string
-      last_ts: lastTimestamp,    // Store raw timestamp string
+      first_ts: firstTimestamp || '',
+      last_ts: lastTimestamp || '',
       duration_minutes: durationMinutes,
       status: status
     });
