@@ -193,8 +193,7 @@
       'TS0080': 'Swatantra Kumar Shukla',
       'TS0082': 'Dablu Kumar',
       'TS0083': 'Sachin Malviya',
-      'TS0084': 'Anjali Dwivedi',
-      '85': 'Ayush Sen'
+      'TS0084': 'Anjali Dwivedi'
     };
 
     // Configuration
@@ -336,66 +335,64 @@
       return resultNode.textContent;
     }
 
-    // In the processAttendanceLogs function, store the original timestamp strings:
-function processAttendanceLogs(logsText, date) {
-  if (!logsText || logsText.trim() === '') {
-    return [];
-  }
+    function processAttendanceLogs(logsText, date) {
+      if (!logsText || logsText.trim() === '') {
+        return [];
+      }
 
-  const lines = logsText.trim().split('\n').filter(line => line.trim());
-  const employeeLogs = {};
+      const lines = logsText.trim().split('\n').filter(line => line.trim());
+      const employeeLogs = {};
 
-  // Parse each log entry
-  lines.forEach(line => {
-    const parts = line.split(',');
-    if (parts.length < 5) return;
+      // Parse each log entry
+      lines.forEach(line => {
+        const parts = line.split(',');
+        if (parts.length < 5) return;
 
-    const timestamp = parts[0].trim();
-    const empCode = parts[1].trim();
-    
-    if (!employeeLogs[empCode]) {
-      employeeLogs[empCode] = [];
+        const timestamp = parts[0].trim();
+        const empCode = parts[1].trim();
+        
+        if (!employeeLogs[empCode]) {
+          employeeLogs[empCode] = [];
+        }
+        // Store the raw timestamp string as-is (it's already in UTC format from the device)
+        employeeLogs[empCode].push(timestamp);
+      });
+
+      // Calculate attendance for each employee
+      const attendanceRecords = [];
+      
+      for (const [empCode, timestamps] of Object.entries(employeeLogs)) {
+        // Convert timestamps to Date objects for sorting
+        const dateObjects = timestamps.map(ts => new Date(ts));
+        dateObjects.sort((a, b) => a - b);
+        
+        const firstPunch = dateObjects[0];
+        const lastPunch = dateObjects[dateObjects.length - 1];
+        const durationMs = lastPunch - firstPunch;
+        const durationMinutes = Math.floor(durationMs / 60000);
+        const durationHours = durationMinutes / 60;
+
+        let status;
+        if (durationHours >= 6) {
+          status = 'PRESENT';
+        } else if (durationHours > 0) {
+          status = 'SHORT';
+        } else {
+          status = 'ABSENT';
+        }
+
+        attendanceRecords.push({
+          pin: empCode,
+          name: EMPLOYEES[empCode] || 'Unknown',
+          first_ts: firstPunch.toISOString(),
+          last_ts: lastPunch.toISOString(),
+          duration_minutes: durationMinutes,
+          status: status
+        });
+      }
+
+      return attendanceRecords;
     }
-    // Store the original timestamp string, not a Date object
-    employeeLogs[empCode].push(timestamp);
-  });
-
-  // Calculate attendance for each employee
-  const attendanceRecords = [];
-  
-  for (const [empCode, timestamps] of Object.entries(employeeLogs)) {
-    // Convert to Date objects only for sorting and calculation
-    const timestampDates = timestamps.map(ts => new Date(ts));
-    timestampDates.sort((a, b) => a - b);
-    
-    const firstPunch = timestampDates[0];
-    const lastPunch = timestampDates[timestampDates.length - 1];
-    const durationMs = lastPunch - firstPunch;
-    const durationMinutes = Math.floor(durationMs / 60000);
-    const durationHours = durationMinutes / 60;
-
-    let status;
-    if (durationHours >= 6) {
-      status = 'PRESENT';
-    } else if (durationHours > 0) {
-      status = 'SHORT';
-    } else {
-      status = 'ABSENT';
-    }
-
-    attendanceRecords.push({
-      pin: empCode,
-      name: EMPLOYEES[empCode] || 'Unknown',
-      // Store ISO strings instead of Date objects
-      first_ts: firstPunch.toISOString(),
-      last_ts: lastPunch.toISOString(),
-      duration_minutes: durationMinutes,
-      status: status
-    });
-  }
-
-  return attendanceRecords;
-}
 
     function displayResults(data, date) {
       const resultsSection = document.getElementById('resultsSection');
@@ -495,33 +492,56 @@ function processAttendanceLogs(logsText, date) {
     function formatTime(timestamp) {
       if (!timestamp) return '-';
       
-      // Parse ISO string directly to avoid timezone issues
+      // Parse ISO string and convert UTC to Indian Standard Time (UTC+5:30)
       // ISO format: YYYY-MM-DDTHH:MM:SS.sssZ
       if (typeof timestamp === 'string') {
-        // Extract time part from ISO string (HH:MM:SS)
-        const timePart = timestamp.split('T')[1]; // Get "HH:MM:SS.sssZ"
+        // Remove the 'Z' and split
+        const cleanTimestamp = timestamp.replace('Z', '');
+        const timePart = cleanTimestamp.split('T')[1]; // Get "HH:MM:SS.sss"
         const [hours, minutes, secondsWithMs] = timePart.split(':');
+        let utcHours = parseInt(hours);
+        let utcMinutes = parseInt(minutes);
         const seconds = Math.floor(parseFloat(secondsWithMs));
         
-        const hour = parseInt(hours);
-        const period = hour >= 12 ? 'PM' : 'AM';
-        const displayHours = hour % 12 || 12;
+        // Convert UTC to IST (UTC + 5:30)
+        utcMinutes += 30;
+        if (utcMinutes >= 60) {
+          utcHours += 1;
+          utcMinutes -= 60;
+        }
+        utcHours += 5;
+        if (utcHours >= 24) {
+          utcHours -= 24;
+        }
         
-        return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period}`;
+        const period = utcHours >= 12 ? 'PM' : 'AM';
+        const displayHours = utcHours % 12 || 12;
+        
+        return `${String(displayHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period} (IST)`;
       }
       
-      // Fallback for Date objects
+      // Fallback for Date objects - convert UTC to IST
       const date = new Date(timestamp);
-      const hours = date.getHours();
-      const minutes = date.getMinutes();
-      const seconds = date.getSeconds();
+      let hours = date.getUTCHours();
+      let minutes = date.getUTCMinutes();
+      const seconds = date.getUTCSeconds();
+      
+      // Convert UTC to IST (UTC + 5:30)
+      minutes += 30;
+      if (minutes >= 60) {
+        hours += 1;
+        minutes -= 60;
+      }
+      hours += 5;
+      if (hours >= 24) {
+        hours -= 24;
+      }
       
       const period = hours >= 12 ? 'PM' : 'AM';
       const displayHours = hours % 12 || 12;
       
-      return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period}`;
+      return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period} (IST)`;
     }
-
 
     function formatDate(dateStr) {
       const date = new Date(dateStr);
