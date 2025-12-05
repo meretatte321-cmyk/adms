@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ADMS Attendance Dashboard</title>
+  <title>Attendance Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50">
   <div class="container mx-auto px-4 py-8 max-w-7xl">
-    <!-- Header -->
     <div class="mb-8 flex justify-between items-center">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">ADMS Dashboard</h1>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">The Sootr</h1>
         <p class="text-gray-600">Attendance Management System</p>
       </div>
       <div class="flex items-center space-x-4">
@@ -19,46 +18,25 @@
           <p class="text-sm text-gray-600">Logged in as</p>
           <p id="userName" class="font-semibold text-gray-900"></p>
         </div>
-        <button onclick="logout()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">
-          Logout
-        </button>
+        <button id="logoutBtn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">Logout</button>
       </div>
     </div>
 
-    <!-- Navigation Tabs -->
     <div class="mb-6 border-b border-gray-200">
-      <nav class="flex space-x-8" role="tablist">
-        <button 
-          data-tab="daily" 
-          class="tab-btn px-1 py-4 border-b-2 border-blue-500 text-blue-600 font-medium focus:outline-none"
-          role="tab" 
-          aria-selected="true">
-          Daily Attendance
-        </button>
-        <button 
-          data-tab="monthly" 
-          class="tab-btn px-1 py-4 border-b-2 border-transparent text-gray-600 font-medium hover:text-gray-900 hover:border-gray-300 focus:outline-none"
-          role="tab" 
-          aria-selected="false">
-          Monthly Attendance
-        </button>
+      <nav class="flex space-x-8">
+        <button data-tab="daily" class="tab-btn px-1 py-4 border-b-2 border-blue-500 text-blue-600 font-medium">Daily Attendance</button>
+        <button data-tab="monthly" class="tab-btn px-1 py-4 border-b-2 border-transparent text-gray-600 font-medium">Monthly Attendance</button>
+        <button data-tab="employees" class="tab-btn px-1 py-4 border-b-2 border-transparent text-gray-600 font-medium">Employees</button>
       </nav>
     </div>
 
-    <!-- DAILY ATTENDANCE TAB -->
     <div id="daily-tab" class="tab-content">
-      <!-- Date Selector -->
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
-            <input type="date" id="dateInput" 
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-          </div>
+        <div class="mb-4 flex gap-2">
+          <input type="date" id="dateInput" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+          <input type="text" id="dailySearchInput" placeholder="Search by PIN or Name..." class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
         </div>
       </div>
-
-      <!-- Results Display -->
       <div id="resultsSection" class="bg-white rounded-lg shadow-md p-6 hidden">
         <h3 class="text-xl font-semibold text-gray-800 mb-4">Attendance Records</h3>
         <div id="selectedDate" class="text-gray-600 mb-4"></div>
@@ -66,26 +44,16 @@
       </div>
     </div>
 
-    <!-- MONTHLY ATTENDANCE TAB -->
     <div id="monthly-tab" class="tab-content hidden">
-      <!-- Month Selector -->
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Select Month</label>
-            <div class="flex gap-2">
-              <input type="month" id="monthInput" 
-                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-              <button onclick="searchMonthlyAttendance()" 
-                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium">
-                Submit
-              </button>
-            </div>
-          </div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Select Month</label>
+        <div class="flex gap-2">
+          <input type="month" id="monthInput" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+          <input type="text" id="monthlySearchInput" placeholder="Search by PIN or Name..." class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+          <button id="monthSubmitBtn" class="px-6 py-2 bg-blue-600 text-white rounded-lg">Submit</button>
         </div>
       </div>
 
-      <!-- Loading Indicator -->
       <div id="monthlyLoadingSection" class="bg-white rounded-lg shadow-md p-6 hidden">
         <div class="text-center py-12">
           <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -93,43 +61,120 @@
         </div>
       </div>
 
-      <!-- Monthly Results Display -->
       <div id="monthlyResultsSection" class="hidden">
-        <!-- Employee List -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
           <h3 class="text-xl font-semibold text-gray-800 mb-4">Employee Attendance Summary</h3>
-          
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee Code</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                </tr>
-              </thead>
-              <tbody id="monthlyEmployeeTableBody" class="bg-white divide-y divide-gray-200">
-              </tbody>
-            </table>
-          </div>
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee Code</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+              </tr>
+            </thead>
+            <tbody id="monthlyEmployeeTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+          </table>
         </div>
       </div>
 
-      <!-- Employee Detail Modal -->
       <div id="employeeDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
           <div class="sticky top-0 bg-white border-b p-6 flex justify-between items-center">
             <div>
               <h2 id="modalEmployeeName" class="text-2xl font-bold text-gray-900"></h2>
               <p id="modalEmployeeCode" class="text-gray-600"></p>
+              <p id="modalMonthYear" class="text-sm text-gray-500 mt-1"></p>
             </div>
-            <button onclick="closeEmployeeDetailModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
           </div>
-          
           <div class="p-6">
-            <!-- Calendar View -->
-            <div id="calendarContainer" class="grid grid-cols-7 gap-1 bg-gray-100 p-4 rounded-lg">
+            <div id="calendarContainer" class="grid grid-cols-7 gap-1 bg-gray-100 p-4 rounded-lg"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add User Modal - Outside all tabs so it works from any tab -->
+    <div id="addUserModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+        <div class="bg-white border-b p-6 flex justify-between items-center">
+          <h2 class="text-2xl font-bold text-gray-900">Add New Employee</h2>
+          <button id="closeAddUserModalBtn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+        </div>
+        <div class="p-6">
+          <form id="addUserForm">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Employee Code (PIN)</label>
+              <input type="text" id="newEmployeePIN" placeholder="e.g., TS0002" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+              <p class="text-xs text-gray-500 mt-1">Unique identifier for the employee</p>
             </div>
+
+            <div class="mb-6">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Employee Name</label>
+              <input type="text" id="newEmployeeName" placeholder="e.g., John Doe" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+              <p class="text-xs text-gray-500 mt-1">Full name of the employee</p>
+            </div>
+
+            <div class="bg-blue-50 p-4 rounded-lg mb-6 text-sm text-gray-700">
+              <p><strong>Fixed Settings:</strong></p>
+              <ul class="mt-2 space-y-1">
+                <li>• Role: <span class="font-semibold">Normal User</span></li>
+                <li>• Verification: <span class="font-semibold">Finger or Face or Card or Password</span></li>
+                <li>• Location: <span class="font-semibold">00009</span></li>
+              </ul>
+            </div>
+
+            <div class="flex gap-3">
+              <button type="button" id="cancelAddUserBtn" class="flex-1 px-4 py-2 bg-gray-300 text-gray-900 rounded-lg hover:bg-gray-400 transition font-medium">Cancel</button>
+              <button type="submit" id="submitAddUserBtn" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">Add Employee</button>
+            </div>
+          </form>
+
+          <div id="addUserError" class="mt-4 p-3 bg-red-100 text-red-700 rounded-lg hidden"></div>
+          <div id="addUserSuccess" class="mt-4 p-3 bg-green-100 text-green-700 rounded-lg hidden"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="employees-tab" class="tab-content hidden">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-semibold text-gray-800">Manage Employees</h3>
+          <button id="addUserBtn" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+            + Add Employee
+          </button>
+        </div>
+        
+        <div class="mb-4 flex gap-2">
+          <input type="text" id="searchInput" placeholder="Search by PIN or Name..." class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+          <button id="refreshBtn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Refresh</button>
+        </div>
+
+        <div id="employeeLoadingSection" class="text-center py-12 hidden">
+          <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p class="mt-4 text-gray-600">Loading employees...</p>
+        </div>
+
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee Code</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+            </tr>
+          </thead>
+          <tbody id="employeeTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+        </table>
+
+        <div id="employeeStatsSection" class="mt-6 grid grid-cols-2 gap-4">
+          <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+            <div class="text-gray-600">Active Employees</div>
+            <div id="activeCount" class="text-3xl font-bold text-green-600">0</div>
+          </div>
+          <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+            <div class="text-gray-600">Inactive Employees</div>
+            <div id="inactiveCount" class="text-3xl font-bold text-red-600">0</div>
           </div>
         </div>
       </div>
@@ -137,676 +182,457 @@
   </div>
 
   <script>
-    // ==================== GLOBAL STATE ====================
-    let monthlyAttendanceData = {};
-    let currentSelectedEmployee = null;
+    document.addEventListener('DOMContentLoaded', initApp);
 
-    // Employee data (static)
-    const EMPLOYEES = {
-      'TS0002': 'Kavita Pandey',
-      'TS0003': 'Chakresh Mahobiya',
-      'TS0004': 'Ravikant Dixit',
-      'TS0005': 'Ram K Gautam',
-      'TS0006': 'Suraj Kumar',
-      'TS0007': 'Ravi Awasthi',
-      'TS0008': 'Deepti Sarathe',
-      'TS0009': 'Arpita Prajapati',
-      'TS0010': 'Manya Jain',
-      'TS0011': 'Kaushiki Gautam',
-      'TS0012': 'Sourabh Bhatnagar',
-      'TS0013': 'Rohit Sahu',
-      'TS0014': 'Gourav Wani',
-      'TS0015': 'Arshan Ghouri',
-      'TS0016': 'Jatin Prajapati',
-      'TS0017': 'Aman das',
-      'TS0018': 'Arman Kacher',
-      'TS0019': 'Ilman Khan',
-      'TS0020': 'Shifa Raine',
-      'TS0021': 'Saeed Khan',
-      'TS0022': 'Muskan Mishra',
-      'TS0023': 'Supriya Soni',
-      'TS0024': 'kajal Priya',
-      'TS0025': 'Atul Kumar Dwivedi',
-      'TS0026': 'neeraj sharma',
-      'TS0027': 'Rahul Raghuwanshi',
-      'TS0028': 'Kuldeep Shrivastava',
-      'TS0029': 'Harikesh Dwivedi',
-      'TS0030': 'Shivendra Dwivedi',
-      'TS0031': 'Sunil Rathore',
-      'TS0032': 'jitendra Shrivastava',
-      'TS0033': 'Manish Kumar',
-      'TS0034': 'Bilal khan',
-      'TS0035': 'Sanjay Sharma',
-      'TS0036': 'Chatrupa Goud',
-      'TS0037': 'Sandeep Mishra',
-      'TS0038': 'srishti Bangde',
-      'TS0039': 'Nishi Bhargava',
-      'TS0045': 'Anil Sharma',
-      'TS0053': 'Manju Jonwal',
-      'TS0056': 'Amresh Kushwaha',
-      'TS0057': 'Sanjay Dhiman',
-      'TS0058': 'Siddharth raikwar',
-      'TS0070': 'Ruma Akhtar',
-      'TS0072': 'Sanjeet Kumar Dhurwey',
-      'TS0078': 'Ansh Jain',
-      'TS0079': 'Ramanand Tiwari',
-      'TS0080': 'Swatantra Kumar Shukla',
-      'TS0082': 'Dablu Kumar',
-      'TS0083': 'Sachin Malviya',
-      'TS0084': 'Anjali Dwivedi',
-      '85': 'Ayush Sen'
-    };
-
-    // Configuration
-    const API_URL = '/api/attendance'; // Express API endpoint
-    const USERNAME = 'essl';
-    const PASSWORD = 'essl';
-    const LOCATION = '00009';
-
-    // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
-      checkAuthentication();
-      initializeDateInput();
-      initializeMonthInput();
-      attachEventListeners();
-      searchAttendance(); // Auto-load today's attendance
-    });
-
-    // Check if user is authenticated
-    async function checkAuthentication() {
+    async function initApp() {
       try {
-        const response = await fetch('/api/auth-status');
-        const data = await response.json();
+        const authResponse = await fetch('/api/auth-status');
+        const authData = await authResponse.json();
         
-        if (!data.authenticated) {
-          // Redirect to login page
+        if (!authData.authenticated) {
           window.location.href = '/login.html';
-        } else {
-          // Display username
-          const userNameEl = document.getElementById('userName');
-          if (userNameEl) {
-            userNameEl.textContent = data.user.username;
-          }
+          return;
         }
+
+        document.getElementById('userName').textContent = authData.user.username;
+        setupEventListeners();
+        setDefaultDates();
+        loadDailyAttendance();
       } catch (error) {
-        console.error('Auth check error:', error);
-        window.location.href = '/login.html';
+        console.error('Initialization error:', error);
       }
     }
 
-    // Logout function
-    async function logout() {
-      try {
-        const response = await fetch('/api/logout', {
-          method: 'POST'
-        });
-        
-        if (response.ok) {
-          // Redirect to login page
-          window.location.href = '/login.html';
-        }
-      } catch (error) {
-        console.error('Logout error:', error);
-        alert('Error logging out');
-      }
+    function setupEventListeners() {
+      document.getElementById('logoutBtn').addEventListener('click', logout);
+      document.getElementById('dateInput').addEventListener('change', loadDailyAttendance);
+      document.getElementById('dailySearchInput').addEventListener('input', filterDailyAttendance);
+      document.getElementById('monthSubmitBtn').addEventListener('click', loadMonthlyAttendance);
+      document.getElementById('monthlySearchInput').addEventListener('input', filterMonthlyAttendance);
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+      document.getElementById('searchInput').addEventListener('input', filterEmployees);
+      document.getElementById('refreshBtn').addEventListener('click', loadEmployees);
+      document.getElementById('addUserBtn').addEventListener('click', openAddUserModal);
+      document.getElementById('closeAddUserModalBtn').addEventListener('click', closeAddUserModal);
+      document.getElementById('cancelAddUserBtn').addEventListener('click', closeAddUserModal);
+      document.getElementById('addUserForm').addEventListener('submit', handleAddUserSubmit);
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', switchTab));
     }
 
-    function initializeDateInput() {
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('dateInput').value = today;
-    }
-
-    function initializeMonthInput() {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      document.getElementById('monthInput').value = `${year}-${month}`;
-    }
-
-    function attachEventListeners() {
-      document.getElementById('dateInput').addEventListener('change', searchAttendance);
-      document.getElementById('monthInput').addEventListener('change', searchMonthlyAttendance);
-      
-      // Tab switching
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', switchTab);
-      });
+    function setDefaultDates() {
+      document.getElementById('dateInput').value = new Date().toISOString().split('T')[0];
+      const y = new Date().getFullYear();
+      const m = String(new Date().getMonth() + 1).padStart(2, '0');
+      document.getElementById('monthInput').value = `${y}-${m}`;
     }
 
     function switchTab(e) {
-      const tabName = e.target.dataset.tab;
-      
-      // Update tab buttons
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('border-blue-500', 'text-blue-600');
-        btn.classList.add('border-transparent', 'text-gray-600', 'hover:text-gray-900', 'hover:border-gray-300');
-        btn.setAttribute('aria-selected', 'false');
+        btn.classList.add('border-transparent', 'text-gray-600');
       });
-      e.target.classList.remove('border-transparent', 'text-gray-600', 'hover:text-gray-900', 'hover:border-gray-300');
+      e.target.classList.remove('border-transparent', 'text-gray-600');
       e.target.classList.add('border-blue-500', 'text-blue-600');
-      e.target.setAttribute('aria-selected', 'true');
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+      document.getElementById(`${e.target.dataset.tab}-tab`).classList.remove('hidden');
       
-      // Update tab content
-      document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.add('hidden');
-      });
-      document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+      // Load employees when switching to employees tab
+      if (e.target.dataset.tab === 'employees' && allEmployees.length === 0) {
+        loadEmployees();
+      }
     }
 
-    async function searchAttendance() {
+    async function loadDailyAttendance() {
+      document.getElementById('dailySearchInput').value = '';
       const dateInput = document.getElementById('dateInput').value;
       if (!dateInput) return;
-
-      showLoading(true);
-      
-      try {
-        const logs = await fetchDeviceLogs(dateInput);
-        const attendanceData = processAttendanceLogs(logs, dateInput);
-        displayResults(attendanceData, dateInput);
-      } catch (error) {
-        console.error('Error fetching attendance:', error);
-        showError('Failed to fetch attendance data. Please check your connection and try again.');
-      } finally {
-        showLoading(false);
-      }
-    }
-
-    async function fetchDeviceLogs(date) {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ date })
-      });
-
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const xmlText = await response.text();
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-      
-      const resultNode = xmlDoc.getElementsByTagName('GetDeviceLogsResult')[0];
-      if (!resultNode) {
-        throw new Error('Invalid response format');
-      }
-
-      return resultNode.textContent;
-    }
-
-    function processAttendanceLogs(logsText, date) {
-      if (!logsText || logsText.trim() === '') {
-        return [];
-      }
-
-      const lines = logsText.trim().split('\n').filter(line => line.trim());
-      const employeeLogs = {};
-
-      // Parse each log entry
-      lines.forEach(line => {
-        const parts = line.split(',');
-        if (parts.length < 5) return;
-
-        const timestamp = parts[0].trim();
-        const empCode = parts[1].trim();
-        
-        if (!employeeLogs[empCode]) {
-          employeeLogs[empCode] = [];
-        }
-        // Store the raw timestamp string as-is (it's already in UTC format from the device)
-        employeeLogs[empCode].push(timestamp);
-      });
-
-      // Calculate attendance for each employee
-      const attendanceRecords = [];
-      
-      for (const [empCode, timestamps] of Object.entries(employeeLogs)) {
-        // Convert timestamps to Date objects for sorting
-        // The timestamps from device are in format like "2025-12-04 09:45:30" which is in UTC
-        // We need to parse them as UTC, not local time
-        const dateObjects = timestamps.map(ts => {
-          // Replace space with T to make it ISO-like format, then add Z for UTC
-          const isoFormat = ts.replace(' ', 'T') + 'Z';
-          return new Date(isoFormat);
-        });
-        dateObjects.sort((a, b) => a - b);
-        
-        const firstPunch = dateObjects[0];
-        const lastPunch = dateObjects[dateObjects.length - 1];
-        const durationMs = lastPunch - firstPunch;
-        const durationMinutes = Math.floor(durationMs / 60000);
-        const durationHours = durationMinutes / 60;
-
-        let status;
-        if (durationHours >= 6) {
-          status = 'PRESENT';
-        } else if (durationHours > 0) {
-          status = 'SHORT';
-        } else {
-          status = 'ABSENT';
-        }
-
-        attendanceRecords.push({
-          pin: empCode,
-          name: EMPLOYEES[empCode] || 'Unknown',
-          first_ts: firstPunch.toISOString(),
-          last_ts: lastPunch.toISOString(),
-          duration_minutes: durationMinutes,
-          status: status
-        });
-      }
-
-      return attendanceRecords;
-    }
-
-    function displayResults(data, date) {
       const resultsSection = document.getElementById('resultsSection');
-      const resultsContainer = document.getElementById('resultsContainer');
-      const selectedDateEl = document.getElementById('selectedDate');
-      
       resultsSection.classList.remove('hidden');
-      selectedDateEl.textContent = `Showing records for ${formatDate(date)}`;
-      
-      if (data.length === 0) {
-        resultsContainer.innerHTML = `
-          <div class="text-center py-8 text-gray-500">
-            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-            </svg>
-            <p class="text-lg font-medium">No attendance records found</p>
-            <p class="text-sm">Try selecting a different date</p>
-          </div>
-        `;
+      document.getElementById('resultsContainer').innerHTML = '<div class="text-center py-12"><div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div><p class="mt-4">Loading...</p></div>';
+
+      try {
+        const response = await fetch('/api/daily-attendance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: dateInput })
+        });
+        if (!response.ok) throw new Error('Failed');
+        const data = await response.json();
+        displayDailyResults(data, dateInput);
+      } catch (error) {
+        showError('Failed to fetch attendance data.');
+      }
+    }
+
+    function displayDailyResults(data, date) {
+      dailyAttendanceData = data;
+      document.getElementById('selectedDate').textContent = `Showing records for ${new Date(date).toLocaleDateString()}`;
+      if (!data || data.length === 0) {
+        document.getElementById('resultsContainer').innerHTML = '<p class="text-center text-gray-500">No records found</p>';
         return;
       }
-
-      // Sort by PIN
-      data.sort((a, b) => a.pin.localeCompare(b.pin));
-
-      // Create table
-      resultsContainer.innerHTML = `
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee Code</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Punch</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Punch</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              ${data.map(record => createTableRow(record)).join('')}
-            </tbody>
-          </table>
-        </div>
-        
-        <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="bg-green-50 rounded-lg p-4 border border-green-200">
-            <div class="text-green-800 text-sm font-medium">Present (≥6 hours)</div>
-            <div class="text-2xl font-bold text-green-900">${data.filter(r => r.status === 'PRESENT').length}</div>
-          </div>
-          <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-            <div class="text-yellow-800 text-sm font-medium">Short Duration (&lt;6 hours)</div>
-            <div class="text-2xl font-bold text-yellow-900">${data.filter(r => r.status === 'SHORT').length}</div>
-          </div>
-          <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
-            <div class="text-blue-800 text-sm font-medium">Total Employees</div>
-            <div class="text-2xl font-bold text-blue-900">${data.length}</div>
-          </div>
-        </div>
-      `;
-    }
-
-    function createTableRow(record) {
-      const statusColors = {
-        'PRESENT': 'bg-green-100 text-green-800',
-        'SHORT': 'bg-yellow-100 text-yellow-800',
-        'ABSENT': 'bg-red-100 text-red-800'
-      };
-
-      const duration = formatDuration(record.duration_minutes);
-      const firstPunch = record.first_ts ? formatTime(record.first_ts) : '-';
-      const lastPunch = record.last_ts ? formatTime(record.last_ts) : '-';
-
-      return `
-        <tr class="hover:bg-gray-50">
-          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${record.pin}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${record.name}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${firstPunch}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${lastPunch}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${duration}</td>
-          <td class="px-6 py-4 whitespace-nowrap">
-            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[record.status] || 'bg-gray-100 text-gray-800'}">
-              ${record.status}
-            </span>
-          </td>
-        </tr>
-      `;
-    }
-
-    function formatDuration(minutes) {
-      if (!minutes || minutes === 0) return '0h 0m';
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      return `${hours}h ${mins}m`;
-    }
-
-    function formatTime(timestamp) {
-      if (!timestamp) return '-';
-      
-      // Parse ISO string and display as UTC
-      // ISO format: YYYY-MM-DDTHH:MM:SS.sssZ
-      if (typeof timestamp === 'string') {
-        // Remove the 'Z' and split
-        const cleanTimestamp = timestamp.replace('Z', '');
-        const timePart = cleanTimestamp.split('T')[1]; // Get "HH:MM:SS.sss"
-        const [hours, minutes, secondsWithMs] = timePart.split(':');
-        const utcHours = parseInt(hours);
-        const utcMinutes = parseInt(minutes);
-        const seconds = Math.floor(parseFloat(secondsWithMs));
-        
-        const period = utcHours >= 12 ? 'PM' : 'AM';
-        const displayHours = utcHours % 12 || 12;
-        
-        return `${String(displayHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period}`;
-      }
-      
-      // Fallback for Date objects - display UTC
-      const date = new Date(timestamp);
-      const hours = date.getUTCHours();
-      const minutes = date.getUTCMinutes();
-      const seconds = date.getUTCSeconds();
-      
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours % 12 || 12;
-      
-      return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${period}`;
-    }
-
-    function formatDate(dateStr) {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      let html = '<table class="min-w-full"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs">Code</th><th class="px-6 py-3 text-left text-xs">Name</th><th class="px-6 py-3 text-left text-xs">In</th><th class="px-6 py-3 text-left text-xs">Out</th><th class="px-6 py-3 text-left text-xs">Duration</th><th class="px-6 py-3 text-left text-xs">Status</th></tr></thead><tbody>';
+      const statusColors = { 'PRESENT': 'bg-green-100', 'SHORT': 'bg-yellow-100', 'ABSENT': 'bg-red-100' };
+      data.forEach(r => {
+        html += `<tr><td class="px-6 py-4">${r.pin}</td><td class="px-6 py-4">${r.name}</td><td class="px-6 py-4">${r.first_ts}</td><td class="px-6 py-4">${r.last_ts}</td><td class="px-6 py-4">${r.duration}</td><td class="px-6 py-4"><span class="px-2 py-1 rounded ${statusColors[r.status] || 'bg-gray-100'}">${r.status}</span></td></tr>`;
       });
+      html += '</tbody></table>';
+      html += `<div class="mt-6 grid grid-cols-3 gap-4"><div class="bg-green-50 p-4"><div>Present</div><div class="text-2xl font-bold">${data.filter(r => r.status === 'PRESENT').length}</div></div><div class="bg-yellow-50 p-4"><div>Short</div><div class="text-2xl font-bold">${data.filter(r => r.status === 'SHORT').length}</div></div><div class="bg-blue-50 p-4"><div>Total</div><div class="text-2xl font-bold">${data.length}</div></div></div>`;
+      document.getElementById('resultsContainer').innerHTML = html;
     }
 
-    function showLoading(show) {
-      const resultsSection = document.getElementById('resultsSection');
-      if (show) {
-        resultsSection.classList.remove('hidden');
-        document.getElementById('resultsContainer').innerHTML = `
-          <div class="text-center py-12">
-            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p class="mt-4 text-gray-600">Loading attendance data...</p>
-          </div>
-        `;
-      }
-    }
-
-    function showError(message) {
-      const resultsSection = document.getElementById('resultsSection');
-      resultsSection.classList.remove('hidden');
-      document.getElementById('resultsContainer').innerHTML = `
-        <div class="text-center py-8 text-red-500">
-          <svg class="mx-auto h-12 w-12 text-red-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          <p class="text-lg font-medium">${message}</p>
-        </div>
-      `;
-    }
-
-    // ==================== MONTHLY ATTENDANCE FUNCTIONS ====================
-
-    async function searchMonthlyAttendance() {
+    async function loadMonthlyAttendance() {
+      document.getElementById('monthlySearchInput').value = '';
       const monthInput = document.getElementById('monthInput').value;
       if (!monthInput) return;
+      document.getElementById('monthlyLoadingSection').classList.remove('hidden');
+      document.getElementById('monthlyResultsSection').classList.add('hidden');
 
-      showMonthlyLoading(true);
-      
       try {
-        // Fetch list of employees only (not their attendance data)
-        const response = await fetch('/api/employees');
-
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-
-        const employees = await response.json();
-        
-        // Store month for later use
-        sessionStorage.setItem('selectedMonth', monthInput);
-        
-        const [year, month] = monthInput.split('-');
-        displayMonthlyResults(employees, year, month);
-      } catch (error) {
-        console.error('Error fetching employees:', error);
-        showMonthlyError('Failed to fetch employee list. Please check your connection and try again.');
-      } finally {
-        showMonthlyLoading(false);
-      }
-    }
-
-    function displayMonthlyResults(employees, year, month) {
-      const monthlyResultsSection = document.getElementById('monthlyResultsSection');
-      const monthlyEmployeeTableBody = document.getElementById('monthlyEmployeeTableBody');
-      
-      monthlyResultsSection.classList.remove('hidden');
-      
-      if (!employees || employees.length === 0) {
-        monthlyEmployeeTableBody.innerHTML = `
-          <tr>
-            <td colspan="3" class="px-6 py-8 text-center">
-              <div class="text-gray-500">
-                <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                <p class="text-lg font-medium">No employees found</p>
-              </div>
-            </td>
-          </tr>
-        `;
-        return;
-      }
-      
-      // Get month name
-      const monthName = new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      
-      // Update heading with month name
-      const monthlyTable = document.querySelector('#monthlyResultsSection .bg-white');
-      const heading = monthlyTable.querySelector('h3');
-      heading.textContent = `Employee Attendance Summary - ${monthName}`;
-      
-      // Display all employees statically (without attendance data yet)
-      monthlyEmployeeTableBody.innerHTML = employees.map(emp => {
-        return `
-          <tr class="hover:bg-gray-50">
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${emp.pin}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${emp.name}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm">
-              <button onclick="viewEmployeeDetail('${emp.pin}', '${year}-${String(month).padStart(2, '0')}')" 
-                class="text-blue-600 hover:text-blue-900 font-medium">View</button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    function viewEmployeeDetail(empCode, yearMonth) {
-      currentSelectedEmployee = empCode;
-      
-      const modal = document.getElementById('employeeDetailModal');
-      const modalEmployeeName = document.getElementById('modalEmployeeName');
-      const modalEmployeeCode = document.getElementById('modalEmployeeCode');
-      const calendarContainer = document.getElementById('calendarContainer');
-      
-      // Show loading state
-      modalEmployeeName.textContent = 'Loading...';
-      modalEmployeeCode.textContent = 'Fetching attendance data...';
-      calendarContainer.innerHTML = `
-        <div class="col-span-7 text-center py-12">
-          <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p class="mt-4 text-gray-600">Loading attendance data...</p>
-        </div>
-      `;
-      modal.classList.remove('hidden');
-      
-      // Fetch attendance data for this employee
-      fetchEmployeeAttendanceData(empCode, yearMonth);
-    }
-
-    async function fetchEmployeeAttendanceData(empCode, yearMonth) {
-      try {
-        const response = await fetch('/api/employee-attendance', {
+        const response = await fetch('/api/monthly-attendance-list', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ yearMonth: monthInput })
+        });
+        if (!response.ok) throw new Error('Failed');
+        const employees = await response.json();
+        displayMonthlyResults(employees, monthInput);
+      } catch (error) {
+        showMonthlyError('Failed to load data.');
+      } finally {
+        document.getElementById('monthlyLoadingSection').classList.add('hidden');
+      }
+    }
+
+    function displayMonthlyResults(employees, yearMonth) {
+      monthlyEmployeeData = employees;
+      const tbody = document.getElementById('monthlyEmployeeTableBody');
+      tbody.innerHTML = employees.map(emp => `<tr><td class="px-6 py-4">${emp.pin}</td><td class="px-6 py-4">${emp.name}</td><td class="px-6 py-4"><button class="view-btn text-blue-600" data-code="${emp.pin}" data-month="${yearMonth}">View</button></td></tr>`).join('');
+      document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', () => viewEmployeeDetail(btn.dataset.code, btn.dataset.month));
+      });
+      document.getElementById('monthlyResultsSection').classList.remove('hidden');
+    }
+
+    async function viewEmployeeDetail(empCode, yearMonth) {
+      const modal = document.getElementById('employeeDetailModal');
+      document.getElementById('modalEmployeeName').textContent = 'Loading...';
+      document.getElementById('calendarContainer').innerHTML = '<div class="text-center py-4">Loading...</div>';
+      modal.classList.remove('hidden');
+
+      try {
+        const response = await fetch('/api/employee-monthly-detail', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ empCode, yearMonth })
         });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch employee attendance');
-        }
-
-        const employeeData = await response.json();
-        displayEmployeeDetailModal(employeeData, yearMonth);
+        if (!response.ok) throw new Error('Failed');
+        const data = await response.json();
+        displayEmployeeDetailModal(data, yearMonth);
       } catch (error) {
-        console.error('Error fetching employee attendance:', error);
-        
-        const calendarContainer = document.getElementById('calendarContainer');
-        calendarContainer.innerHTML = `
-          <div class="col-span-7 text-center py-12 text-red-600">
-            <svg class="mx-auto h-12 w-12 text-red-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <p class="text-lg font-medium">Failed to load attendance data</p>
-            <p class="text-sm mt-2">Please try again</p>
-          </div>
-        `;
+        document.getElementById('calendarContainer').innerHTML = '<p class="text-red-600">Failed to load</p>';
       }
     }
 
     function displayEmployeeDetailModal(employeeData, yearMonth) {
-      const modalEmployeeName = document.getElementById('modalEmployeeName');
-      const modalEmployeeCode = document.getElementById('modalEmployeeCode');
-      const calendarContainer = document.getElementById('calendarContainer');
-      
-      modalEmployeeName.textContent = employeeData.name;
-      
-      // Generate calendar view
       const [year, month] = yearMonth.split('-');
+      document.getElementById('modalEmployeeName').textContent = employeeData.name;
+      document.getElementById('modalEmployeeCode').textContent = `${employeeData.pin}`;
+      
+      // Display month name
+      const monthDate = new Date(year, month - 1);
+      const monthName = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      document.getElementById('modalMonthYear').textContent = monthName;
+
       const daysInMonth = new Date(year, month, 0).getDate();
-      
-      // Get month name
-      const monthName = new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      modalEmployeeCode.textContent = `${employeeData.pin} • ${monthName}`;
-      
-      // Create day headers
-      const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      let calendarHTML = dayHeaders.map(day => 
-        `<div class="text-center font-semibold text-gray-700 bg-gray-200 p-2 rounded">${day}</div>`
-      ).join('');
-      
-      // Get first day of month
       const firstDay = new Date(year, month - 1, 1).getDay();
+      const statusColors = { 'PRESENT': 'bg-green-100', 'SHORT': 'bg-yellow-100', 'ABSENT': 'bg-red-100' };
+
+      let html = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="bg-gray-200 p-2 text-center font-semibold">${d}</div>`).join('');
+      for (let i = 0; i < firstDay; i++) html += '<div class="p-2 bg-gray-50"></div>';
       
-      // Add empty cells for days before month starts
-      for (let i = 0; i < firstDay; i++) {
-        calendarHTML += '<div class="p-2 bg-gray-50 rounded"></div>';
-      }
-      
-      // Add day cells
       for (let day = 1; day <= daysInMonth; day++) {
         const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const record = employeeData.dailyRecords[date];
-        
-        let cellHTML = `<div class="p-2 bg-white border rounded cursor-pointer hover:shadow-md transition">`;
-        cellHTML += `<div class="text-center font-semibold text-gray-900 mb-1">${day}</div>`;
-        
         if (record) {
-          const statusColors = {
-            'PRESENT': { bg: 'bg-green-100', text: 'text-green-800', label: '✓' },
-            'SHORT': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '⚠' },
-            'ABSENT': { bg: 'bg-red-100', text: 'text-red-800', label: '✗' }
-          };
-          
-          const colors = statusColors[record.status] || statusColors['ABSENT'];
-          const duration = formatDuration(record.duration_minutes);
-          
-          // Check if first punch and last punch are the same (possibly missed punch)
-          const firstTime = formatTime(record.first_ts);
-          const lastTime = formatTime(record.last_ts);
-          const isMissingPunch = firstTime === lastTime;
-          
-          cellHTML += `
-            <div class="${colors.bg} ${colors.text} text-xs p-1 rounded text-center font-semibold mb-1">
-              ${record.status}
-            </div>
-            ${isMissingPunch ? '<div class="text-xs text-red-600 text-center bg-red-50 p-1 rounded mb-1 font-semibold">⚠ Possibly Missed Punch</div>' : ''}
-            <div class="text-xs text-gray-600 text-center">
-              IN: ${firstTime || '-'}
-            </div>
-            <div class="text-xs text-gray-600 text-center">
-              OUT: ${lastTime || '-'}
-            </div>
-            <div class="text-xs text-gray-600 text-center border-t pt-1 mt-1">
-              ${duration}
-            </div>
-          `;
+          const inTime = record.first_ts || '-';
+          const outTime = record.last_ts || '-';
+          html += `<div class="p-2 bg-white border"><div class="font-semibold">${day}</div><div class="${statusColors[record.status] || 'bg-gray-100'} text-xs p-1 rounded">${record.status}</div><div class="text-xs">IN: ${inTime}</div><div class="text-xs">OUT: ${outTime}</div><div class="text-xs border-t pt-1 mt-1">${record.duration}</div></div>`;
         } else {
-          cellHTML += `<div class="text-xs text-gray-400 text-center">No data</div>`;
+          html += `<div class="p-2 bg-white border"><div class="font-semibold">${day}</div><div class="text-xs text-gray-400">No data</div></div>`;
         }
-        
-        cellHTML += `</div>`;
-        calendarHTML += cellHTML;
       }
-      
-      calendarContainer.innerHTML = calendarHTML;
+      document.getElementById('calendarContainer').innerHTML = html;
     }
 
-    function closeEmployeeDetailModal() {
+    function closeModal() {
       document.getElementById('employeeDetailModal').classList.add('hidden');
-      currentSelectedEmployee = null;
     }
 
-    function showMonthlyLoading(show) {
-      const loadingSection = document.getElementById('monthlyLoadingSection');
-      const resultsSection = document.getElementById('monthlyResultsSection');
+    function showError(message) {
+      document.getElementById('resultsContainer').innerHTML = `<p class="text-red-500">${message}</p>`;
+    }
+
+    function showMonthlyError(message) {
+      document.getElementById('monthlyEmployeeTableBody').innerHTML = `<tr><td colspan="3" class="text-red-500 text-center p-4">${message}</td></tr>`;
+    }
+
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    }
+
+    let allEmployees = [];
+    let dailyAttendanceData = [];
+    let monthlyEmployeeData = [];
+
+    async function loadEmployees() {
+      const loadingSection = document.getElementById('employeeLoadingSection');
+      loadingSection.classList.remove('hidden');
       
-      if (show) {
-        loadingSection.classList.remove('hidden');
-        resultsSection.classList.add('hidden');
-      } else {
+      try {
+        const response = await fetch('/api/employees/status/all', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Failed');
+        allEmployees = await response.json();
+        displayEmployees(allEmployees);
+        updateEmployeeStats();
+      } catch (error) {
+        console.error('Error loading employees:', error);
+        document.getElementById('employeeTableBody').innerHTML = '<tr><td colspan="4" class="text-red-500 text-center p-4">Failed to load employees</td></tr>';
+      } finally {
         loadingSection.classList.add('hidden');
       }
     }
 
-    function showMonthlyError(message) {
-      const resultsSection = document.getElementById('monthlyResultsSection');
-      const employeeTableBody = document.getElementById('monthlyEmployeeTableBody');
-      
-      resultsSection.classList.remove('hidden');
-      employeeTableBody.innerHTML = `
-        <tr>
-          <td colspan="7" class="px-6 py-8 text-center">
-            <div class="text-red-500">
-              <svg class="mx-auto h-12 w-12 text-red-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              <p class="text-lg font-medium">${message}</p>
-            </div>
+    function displayEmployees(employees) {
+      const tbody = document.getElementById('employeeTableBody');
+      if (!employees || employees.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">No employees found</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = employees.map(emp => {
+        const isActive = emp.status === 'active';
+        const statusColor = isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+        const buttonColor = isActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700';
+        const buttonText = isActive ? 'Deactivate' : 'Activate';
+        
+        return `<tr class="hover:bg-gray-50">
+          <td class="px-6 py-4 font-medium text-gray-900">${emp.pin}</td>
+          <td class="px-6 py-4 text-gray-700">${emp.name}</td>
+          <td class="px-6 py-4">
+            <span class="px-3 py-1 rounded-full text-sm font-medium ${statusColor}">
+              ${emp.status.charAt(0).toUpperCase() + emp.status.slice(1)}
+            </span>
           </td>
-        </tr>
-      `;
+          <td class="px-6 py-4">
+            <button class="status-btn px-4 py-2 text-white rounded-lg transition font-medium ${buttonColor}" 
+              data-pin="${emp.pin}" 
+              data-current-status="${emp.status}">
+              ${buttonText}
+            </button>
+          </td>
+        </tr>`;
+      }).join('');
+
+      document.querySelectorAll('.status-btn').forEach(btn => {
+        btn.addEventListener('click', handleStatusChange);
+      });
+    }
+
+    async function handleStatusChange(e) {
+      const btn = e.target;
+      const pin = btn.dataset.pin;
+      const currentStatus = btn.dataset.currentStatus;
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      const employee = allEmployees.find(emp => emp.pin === pin);
+      const employeeName = employee ? employee.name : pin;
+
+      if (!confirm(`Are you sure you want to ${newStatus === 'active' ? 'activate' : 'deactivate'} ${employeeName}?`)) {
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Updating...';
+
+      try {
+        const response = await fetch('/api/employees/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin, status: newStatus })
+        });
+
+        if (!response.ok) throw new Error('Failed to update status');
+        
+        await loadEmployees();
+        showSuccessMessage(`${employeeName} has been ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully.`);
+      } catch (error) {
+        console.error('Error updating status:', error);
+        alert('Failed to update employee status. Please try again.');
+        btn.disabled = false;
+        const buttonText = currentStatus === 'active' ? 'Deactivate' : 'Activate';
+        btn.textContent = buttonText;
+      }
+    }
+
+    function updateEmployeeStats() {
+      const activeCount = allEmployees.filter(emp => emp.status === 'active').length;
+      const inactiveCount = allEmployees.filter(emp => emp.status === 'inactive').length;
+      
+      document.getElementById('activeCount').textContent = activeCount;
+      document.getElementById('inactiveCount').textContent = inactiveCount;
+    }
+
+    function filterEmployees() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = allEmployees.filter(emp => 
+        emp.pin.toLowerCase().includes(searchTerm) || 
+        emp.name.toLowerCase().includes(searchTerm)
+      );
+      displayEmployees(filtered);
+    }
+
+    function filterDailyAttendance() {
+      const searchTerm = document.getElementById('dailySearchInput').value.toLowerCase();
+      const filtered = dailyAttendanceData.filter(record =>
+        record.pin.toLowerCase().includes(searchTerm) ||
+        record.name.toLowerCase().includes(searchTerm)
+      );
+      
+      // Rebuild table with filtered results
+      if (!filtered || filtered.length === 0) {
+        document.getElementById('resultsContainer').innerHTML = '<p class="text-center text-gray-500">No records match your search</p>';
+        return;
+      }
+      
+      let html = '<table class="min-w-full"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs">Code</th><th class="px-6 py-3 text-left text-xs">Name</th><th class="px-6 py-3 text-left text-xs">In</th><th class="px-6 py-3 text-left text-xs">Out</th><th class="px-6 py-3 text-left text-xs">Duration</th><th class="px-6 py-3 text-left text-xs">Status</th></tr></thead><tbody>';
+      const statusColors = { 'PRESENT': 'bg-green-100', 'SHORT': 'bg-yellow-100', 'ABSENT': 'bg-red-100' };
+      filtered.forEach(r => {
+        html += `<tr><td class="px-6 py-4">${r.pin}</td><td class="px-6 py-4">${r.name}</td><td class="px-6 py-4">${r.first_ts}</td><td class="px-6 py-4">${r.last_ts}</td><td class="px-6 py-4">${r.duration}</td><td class="px-6 py-4"><span class="px-2 py-1 rounded ${statusColors[r.status] || 'bg-gray-100'}">${r.status}</span></td></tr>`;
+      });
+      html += '</tbody></table>';
+      html += `<div class="mt-6 grid grid-cols-3 gap-4"><div class="bg-green-50 p-4"><div>Present</div><div class="text-2xl font-bold">${filtered.filter(r => r.status === 'PRESENT').length}</div></div><div class="bg-yellow-50 p-4"><div>Short</div><div class="text-2xl font-bold">${filtered.filter(r => r.status === 'SHORT').length}</div></div><div class="bg-blue-50 p-4"><div>Total</div><div class="text-2xl font-bold">${filtered.length}</div></div></div>`;
+      document.getElementById('resultsContainer').innerHTML = html;
+    }
+
+    function filterMonthlyAttendance() {
+      const searchTerm = document.getElementById('monthlySearchInput').value.toLowerCase();
+      const filtered = monthlyEmployeeData.filter(emp =>
+        emp.pin.toLowerCase().includes(searchTerm) ||
+        emp.name.toLowerCase().includes(searchTerm)
+      );
+      
+      // Get the year-month from the month input for the View buttons
+      const yearMonth = document.getElementById('monthInput').value;
+      
+      // Rebuild table with filtered results
+      const tbody = document.getElementById('monthlyEmployeeTableBody');
+      if (!filtered || filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">No employees match your search</td></tr>';
+      } else {
+        tbody.innerHTML = filtered.map(emp => `<tr><td class="px-6 py-4">${emp.pin}</td><td class="px-6 py-4">${emp.name}</td><td class="px-6 py-4"><button class="view-btn text-blue-600" data-code="${emp.pin}" data-month="${yearMonth}">View</button></td></tr>`).join('');
+        document.querySelectorAll('.view-btn').forEach(btn => {
+          btn.addEventListener('click', () => viewEmployeeDetail(btn.dataset.code, btn.dataset.month));
+        });
+      }
+    }
+
+    function showSuccessMessage(message) {
+      const div = document.createElement('div');
+      div.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      div.textContent = message;
+      document.body.appendChild(div);
+      setTimeout(() => div.remove(), 3000);
+    }
+
+    function openAddUserModal() {
+      document.getElementById('addUserModal').classList.remove('hidden');
+      document.getElementById('addUserForm').reset();
+      document.getElementById('addUserError').classList.add('hidden');
+      document.getElementById('addUserSuccess').classList.add('hidden');
+      document.getElementById('newEmployeePIN').focus();
+    }
+
+    function closeAddUserModal() {
+      document.getElementById('addUserModal').classList.add('hidden');
+      document.getElementById('addUserForm').reset();
+      document.getElementById('addUserError').classList.add('hidden');
+      document.getElementById('addUserSuccess').classList.add('hidden');
+    }
+
+    async function handleAddUserSubmit(e) {
+      e.preventDefault();
+      
+      const pin = document.getElementById('newEmployeePIN').value.trim();
+      const name = document.getElementById('newEmployeeName').value.trim();
+      const errorDiv = document.getElementById('addUserError');
+      const successDiv = document.getElementById('addUserSuccess');
+      const submitBtn = document.getElementById('submitAddUserBtn');
+      
+      // Clear previous messages
+      errorDiv.classList.add('hidden');
+      successDiv.classList.add('hidden');
+      
+      // Validate inputs
+      if (!pin || !name) {
+        errorDiv.textContent = 'Please fill in all fields';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+
+      if (pin.length < 2) {
+        errorDiv.textContent = 'Employee Code must be at least 2 characters';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+
+      if (name.length < 2) {
+        errorDiv.textContent = 'Employee Name must be at least 2 characters';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+
+      // Disable submit button
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Adding...';
+
+      try {
+        const response = await fetch('/api/employees/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin, name })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to add employee');
+        }
+
+        // Show success message
+        successDiv.textContent = `✓ Employee "${name}" (${pin}) added successfully!`;
+        successDiv.classList.remove('hidden');
+        
+        // Reset form
+        document.getElementById('addUserForm').reset();
+        
+        // Close modal after 2 seconds
+        setTimeout(() => {
+          closeAddUserModal();
+          loadEmployees(); // Reload employee list
+        }, 2000);
+        
+      } catch (error) {
+        console.error('Error adding employee:', error);
+        errorDiv.textContent = error.message || 'Failed to add employee. Please try again.';
+        errorDiv.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Add Employee';
+      }
     }
   </script>
 </body>
