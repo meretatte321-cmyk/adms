@@ -9,6 +9,8 @@ const redis = require('redis');
 const RedisStore = require('connect-redis').default;
 // Turso DB client
 const turso = require('./db/turso-client');
+// Excel generation
+const ExcelJS = require('exceljs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -348,15 +350,19 @@ app.post('/api/monthly-attendance', isAuthenticated, async (req, res) => {
     // Fetch all dates in parallel
     const logsArray = await Promise.all(datePromises);
     
+    // Process all logs in parallel (not sequential!)
+    const processPromises = logsArray.map((xmlText, i) => {
+      const date = `${year}-${String(month).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
+      return processAttendanceLogs(xmlText, date).then(records => ({ date, records }));
+    });
+    
+    const processedDays = await Promise.all(processPromises);
+    
     // Consolidate data by employee
     const monthlyData = {};
     
-    for (let i = 0; i < logsArray.length; i++) {
-      const date = `${year}-${String(month).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
-      const attendanceRecords = await processAttendanceLogs(logsArray[i], date);
-      
-      // Organize by employee
-      attendanceRecords.forEach(record => {
+    processedDays.forEach(({ date, records }) => {
+      records.forEach(record => {
         if (!monthlyData[record.pin]) {
           monthlyData[record.pin] = {
             pin: record.pin,
@@ -366,7 +372,7 @@ app.post('/api/monthly-attendance', isAuthenticated, async (req, res) => {
         }
         monthlyData[record.pin].dailyRecords[date] = record;
       });
-    }
+    });
     
     res.json(monthlyData);
     
@@ -409,16 +415,20 @@ app.post('/api/employee-attendance', isAuthenticated, async (req, res) => {
       // Fetch all dates in parallel
       const logsArray = await Promise.all(datePromises);
       
+      // Process all logs in parallel (not sequential!)
+      const processPromises = logsArray.map((xmlText, i) => {
+        const date = `${year}-${String(month).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
+        return processAttendanceLogs(xmlText, date).then(records => ({ date, records }));
+      });
+      
+      const processedDays = await Promise.all(processPromises);
+      
       // Consolidate data by employee
       const allMonthlyData = {};
       const employeeNames = {};
       
-      for (let i = 0; i < logsArray.length; i++) {
-        const date = `${year}-${String(month).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
-        const attendanceRecords = await processAttendanceLogs(logsArray[i], date);
-        
-        // Organize by employee
-        attendanceRecords.forEach(record => {
+      processedDays.forEach(({ date, records }) => {
+        records.forEach(record => {
           if (!allMonthlyData[record.pin]) {
             allMonthlyData[record.pin] = {
               pin: record.pin,
@@ -429,7 +439,7 @@ app.post('/api/employee-attendance', isAuthenticated, async (req, res) => {
           }
           allMonthlyData[record.pin].dailyRecords[date] = record;
         });
-      }
+      });
       
       // Cache the complete monthly data
       monthlyAttendanceCache[cacheKey] = {
@@ -738,15 +748,20 @@ app.post('/api/employee-monthly-detail', isAuthenticated, async (req, res) => {
 
     const logsArray = await Promise.all(datePromises);
 
+    // Process all logs in parallel
+    const processPromises = logsArray.map((xmlText, i) => {
+      const date = `${year}-${String(month).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
+      return processAttendanceLogs(xmlText, date).then(records => ({ date, records }));
+    });
+
+    const processedDays = await Promise.all(processPromises);
+
     // Consolidate data for the specific employee
     const dailyRecords = {};
 
-    for (let i = 0; i < logsArray.length; i++) {
-      const date = `${year}-${String(month).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
-  const attendanceRecords = await processAttendanceLogs(logsArray[i], date);
-
+    processedDays.forEach(({ date, records }) => {
       // Find records for this specific employee
-      const empRecord = attendanceRecords.find(record => record.pin === empCode);
+      const empRecord = records.find(record => record.pin === empCode);
       if (empRecord) {
         dailyRecords[date] = {
           status: empRecord.status,
@@ -755,7 +770,7 @@ app.post('/api/employee-monthly-detail', isAuthenticated, async (req, res) => {
           duration: formatDurationForDisplay(empRecord.duration_minutes)
         };
       }
-    }
+    });
 
     const employeeName = await getEmployeeNameAsync(empCode);
 
@@ -767,6 +782,300 @@ app.post('/api/employee-monthly-detail', isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error('Error in /api/employee-monthly-detail:', err);
     res.status(500).json({ error: 'Failed to fetch employee monthly detail' });
+  }
+});
+
+// Streaming endpoint for employee monthly detail with progress
+app.get('/api/employee-monthly-detail-stream', isAuthenticated, async (req, res) => {
+  try {
+    const { empCode, yearMonth } = req.query;
+    
+    if (!empCode || !yearMonth) {
+      return res.status(400).json({ error: 'Employee code and year-month are required' });
+    }
+
+    // Set up Server-Sent Events
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    const [year, month] = yearMonth.split('-');
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    // Send initial message
+    res.write(`data: ${JSON.stringify({ type: 'start', total: daysInMonth })}\n\n`);
+
+    // Fetch all dates in parallel for performance
+    const datePromises = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      datePromises.push(fetchAttendanceForDate(date));
+    }
+
+    const logsArray = await Promise.all(datePromises);
+
+    // Process all logs in parallel
+    const processPromises = logsArray.map((xmlText, i) => {
+      const date = `${year}-${String(month).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
+      return processAttendanceLogs(xmlText, date).then(records => ({ date, records, index: i + 1 }));
+    });
+
+    // Stream results as they complete using Promise.allSettled
+    const allResults = [];
+    for (const promise of processPromises) {
+      try {
+        const { date, records, index } = await promise;
+        
+        // Find records for this specific employee
+        const empRecord = records.find(record => record.pin === empCode);
+        if (empRecord) {
+          const dayData = {
+            date,
+            status: empRecord.status,
+            first_ts: formatTimeForDisplay(empRecord.first_ts),
+            last_ts: formatTimeForDisplay(empRecord.last_ts),
+            duration: formatDurationForDisplay(empRecord.duration_minutes)
+          };
+          
+          allResults.push({ date, dayData });
+          
+          // Stream progress update with result
+          res.write(`data: ${JSON.stringify({ 
+            type: 'progress', 
+            current: index, 
+            total: daysInMonth,
+            date,
+            dayData
+          })}\n\n`);
+        } else {
+          // Stream progress without result (no data for this day)
+          res.write(`data: ${JSON.stringify({ 
+            type: 'progress', 
+            current: index, 
+            total: daysInMonth,
+            date: null
+          })}\n\n`);
+        }
+      } catch (err) {
+        console.error(`Error processing day ${promise.index}:`, err);
+        res.write(`data: ${JSON.stringify({ type: 'error', message: `Failed to process day ${promise.index}` })}\n\n`);
+      }
+    }
+
+    // Get employee name
+    const employeeName = await getEmployeeNameAsync(empCode);
+
+    // Send completion message
+    res.write(`data: ${JSON.stringify({ 
+      type: 'complete', 
+      pin: empCode, 
+      name: employeeName,
+      total: allResults.length
+    })}\n\n`);
+
+    res.end();
+  } catch (err) {
+    console.error('Error in /api/employee-monthly-detail-stream:', err);
+    res.write(`data: ${JSON.stringify({ type: 'error', message: 'Failed to fetch employee monthly detail' })}\n\n`);
+    res.end();
+  }
+});
+
+// Export monthly attendance to Excel endpoint
+app.post('/api/export-monthly-attendance', isAuthenticated, async (req, res) => {
+  try {
+    const { yearMonth, employees } = req.body;
+    
+    if (!yearMonth || !employees || employees.length === 0) {
+      return res.status(400).json({ error: 'Year-month and employee list are required' });
+    }
+
+    // Set response headers for Excel download
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="attendance_${yearMonth}.xlsx"`);
+
+    // Create Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(`Attendance ${yearMonth}`);
+
+    // Get days in month
+    const [year, month] = yearMonth.split('-');
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    // Clear any expired cache
+    clearExpiredCache();
+
+    // Check cache for monthly data
+    const cacheKey = yearMonth;
+    let monthlyData = monthlyAttendanceCache[cacheKey];
+
+    if (!monthlyData) {
+      // Fetch from API
+      const datePromises = [];
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        datePromises.push(fetchAttendanceForDate(date));
+      }
+      
+      const logsArray = await Promise.all(datePromises);
+      
+      const processPromises = logsArray.map((xmlText, i) => {
+        const date = `${year}-${String(month).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
+        return processAttendanceLogs(xmlText, date).then(records => ({ date, records }));
+      });
+      
+      const processedDays = await Promise.all(processPromises);
+      
+      const allMonthlyData = {};
+      const employeeNames = {};
+      
+      processedDays.forEach(({ date, records }) => {
+        records.forEach(record => {
+          if (!allMonthlyData[record.pin]) {
+            allMonthlyData[record.pin] = {
+              pin: record.pin,
+              name: record.name,
+              dailyRecords: {}
+            };
+            employeeNames[record.pin] = record.name;
+          }
+          allMonthlyData[record.pin].dailyRecords[date] = record;
+        });
+      });
+      
+      monthlyAttendanceCache[cacheKey] = {
+        data: allMonthlyData,
+        employeeNames: employeeNames,
+        timestamp: Date.now()
+      };
+      
+      monthlyData = monthlyAttendanceCache[cacheKey];
+    }
+
+    // Helper function to get day of week
+    const getDayOfWeek = (dateStr) => {
+      const date = new Date(dateStr + 'T00:00:00');
+      const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+      return days[date.getDay()];
+    };
+
+    // Helper function to get status abbreviation
+    const getStatusAbbrev = (status) => {
+      if (!status) return 'A'; // Absent
+      const statusLower = status.toLowerCase();
+      if (statusLower === 'present') return 'P';
+      if (statusLower === 'short') return 'S';
+      if (statusLower === 'absent') return 'A';
+      return 'A';
+    };
+
+    // Set up header row with dates
+    worksheet.columns = [
+      { header: 'Employee Name', key: 'name', width: 20 },
+      ...Array.from({ length: daysInMonth }, (_, i) => ({
+        header: `${i + 1}`,
+        key: `day${i + 1}`,
+        width: 8
+      })),
+      { header: 'TOTAL PRESENT', key: 'totalPresent', width: 15 },
+      { header: 'TOTAL ABSENT', key: 'totalAbsent', width: 15 }
+    ];
+
+    // Add day of week header row
+    const dow = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      dow.push(getDayOfWeek(date));
+    }
+
+    // Style header rows
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF366092' } };
+    headerRow.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+    headerRow.height = 25;
+
+    // Add day of week row
+    const dowRow = worksheet.insertRow(2, {});
+    dowRow.getCell(1).value = 'Day Of Week';
+    for (let day = 1; day <= daysInMonth; day++) {
+      dowRow.getCell(day + 1).value = dow[day - 1];
+    }
+    dowRow.font = { bold: true, italic: true };
+    dowRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8E8E8' } };
+    dowRow.alignment = { horizontal: 'center', vertical: 'center' };
+    dowRow.height = 20;
+
+    // Add employee data rows
+    let currentRow = 3;
+    let processedCount = 0;
+
+    for (const empCode of employees) {
+      processedCount++;
+
+      const employeeData = monthlyData.data[empCode];
+      if (!employeeData) continue;
+
+      const row = {
+        name: employeeData.name
+      };
+
+      let totalPresent = 0;
+      let totalAbsent = 0;
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayRecord = employeeData.dailyRecords[dateStr];
+        
+        const status = dayRecord?.status || 'ABSENT';
+        const abbrev = getStatusAbbrev(status);
+        row[`day${day}`] = abbrev;
+
+        if (abbrev === 'P') totalPresent++;
+        if (abbrev === 'A') totalAbsent++;
+      }
+
+      row.totalPresent = totalPresent;
+      row.totalAbsent = totalAbsent;
+
+      const wsRow = worksheet.insertRow(currentRow, row);
+      
+      // Style data rows
+      wsRow.font = { size: 11 };
+      for (let day = 1; day <= daysInMonth; day++) {
+        const cell = wsRow.getCell(day + 1);
+        cell.alignment = { horizontal: 'center', vertical: 'center' };
+        
+        // Color code: Green = P, Red = A, Yellow = S
+        if (cell.value === 'P') {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } };
+          cell.font = { color: { argb: 'FF006100' } };
+        } else if (cell.value === 'A') {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+          cell.font = { color: { argb: 'FF9C0006' } };
+        } else if (cell.value === 'S') {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF99' } };
+          cell.font = { color: { argb: 'FF9C6500' } };
+        }
+      }
+
+      // Style summary columns
+      wsRow.getCell(daysInMonth + 2).font = { bold: true };
+      wsRow.getCell(daysInMonth + 2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCFFCC' } };
+      wsRow.getCell(daysInMonth + 3).font = { bold: true };
+      wsRow.getCell(daysInMonth + 3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCCCC' } };
+
+      currentRow++;
+    }
+
+    // Write workbook to response
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error('Error in /api/export-monthly-attendance:', error);
+    res.status(500).json({ error: 'Failed to export attendance data' });
   }
 });
 
