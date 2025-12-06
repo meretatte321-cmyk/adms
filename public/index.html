@@ -63,7 +63,12 @@
 
       <div id="monthlyResultsSection" class="hidden">
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h3 class="text-xl font-semibold text-gray-800 mb-4">Employee Attendance Summary</h3>
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-gray-800">Employee Attendance Summary</h3>
+            <button id="exportBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+              📥 Export to Excel
+            </button>
+          </div>
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
@@ -87,8 +92,49 @@
             </div>
             <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
           </div>
+          
+          <!-- Progress Bar Section -->
+          <div id="progressSection" class="hidden bg-blue-50 border-b p-6">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-medium text-gray-700">Loading attendance data...</span>
+              <span id="progressText" class="text-sm font-medium text-blue-600">0%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p id="progressCounter" class="text-xs text-gray-600 mt-2">Processed 0 days...</p>
+          </div>
+          
           <div class="p-6">
             <div id="calendarContainer" class="grid grid-cols-7 gap-1 bg-gray-100 p-4 rounded-lg"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export Progress Modal -->
+      <div id="exportProgressModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div class="bg-white border-b p-6 flex justify-between items-center">
+            <h2 class="text-2xl font-bold text-gray-900">Exporting Attendance</h2>
+            <button id="closeExportModalBtn" class="text-gray-400 hover:text-gray-600 text-2xl" disabled>&times;</button>
+          </div>
+          
+          <div class="p-6">
+            <div class="bg-blue-50 p-4 rounded-lg">
+              <div class="flex justify-between items-center mb-3">
+                <span class="text-sm font-medium text-gray-700">Processing employees...</span>
+                <span id="exportProgressPercent" class="text-sm font-medium text-blue-600">0%</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-3">
+                <div id="exportProgressBar" class="bg-gradient-to-r from-blue-600 to-blue-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+              </div>
+              <p id="exportProgressCounter" class="text-xs text-gray-600 mt-3">Processing 0 of 0 employees...</p>
+              <p id="exportETA" class="text-xs text-gray-500 mt-2">ETA: calculating...</p>
+            </div>
+
+            <div id="exportStatus" class="mt-6 text-center text-gray-600">
+              <p>Please wait while preparing your Excel file...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -216,6 +262,8 @@
       document.getElementById('closeAddUserModalBtn').addEventListener('click', closeAddUserModal);
       document.getElementById('cancelAddUserBtn').addEventListener('click', closeAddUserModal);
       document.getElementById('addUserForm').addEventListener('submit', handleAddUserSubmit);
+      document.getElementById('exportBtn').addEventListener('click', handleExportClick);
+      document.getElementById('closeExportModalBtn').addEventListener('click', closeExportModal);
       document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', switchTab));
     }
 
@@ -316,50 +364,133 @@
 
     async function viewEmployeeDetail(empCode, yearMonth) {
       const modal = document.getElementById('employeeDetailModal');
-      document.getElementById('modalEmployeeName').textContent = 'Loading...';
-      document.getElementById('calendarContainer').innerHTML = '<div class="text-center py-4">Loading...</div>';
-      modal.classList.remove('hidden');
-
-      try {
-        const response = await fetch('/api/employee-monthly-detail', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ empCode, yearMonth })
-        });
-        if (!response.ok) throw new Error('Failed');
-        const data = await response.json();
-        displayEmployeeDetailModal(data, yearMonth);
-      } catch (error) {
-        document.getElementById('calendarContainer').innerHTML = '<p class="text-red-600">Failed to load</p>';
-      }
-    }
-
-    function displayEmployeeDetailModal(employeeData, yearMonth) {
-      const [year, month] = yearMonth.split('-');
-      document.getElementById('modalEmployeeName').textContent = employeeData.name;
-      document.getElementById('modalEmployeeCode').textContent = `${employeeData.pin}`;
       
-      // Display month name
+      // RESET all state immediately before fetching new data
+      document.getElementById('modalEmployeeName').textContent = 'Loading...';
+      document.getElementById('modalEmployeeCode').textContent = '';
+      document.getElementById('calendarContainer').innerHTML = '';
+      document.getElementById('progressBar').style.width = '0%';
+      document.getElementById('progressText').textContent = '0%';
+      document.getElementById('progressCounter').textContent = 'Processed 0 days...';
+      document.getElementById('progressSection').classList.remove('hidden');
+      modal.classList.remove('hidden');
+      
+      // Set month year display
+      const [year, month] = yearMonth.split('-');
       const monthDate = new Date(year, month - 1);
       const monthName = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       document.getElementById('modalMonthYear').textContent = monthName;
 
+      try {
+        // Use streaming endpoint for real-time updates
+        const response = await fetch(`/api/employee-monthly-detail-stream?empCode=${empCode}&yearMonth=${yearMonth}`);
+        
+        if (!response.ok) throw new Error('Failed');
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        const dailyRecords = {};
+        let totalDays = 0;
+        let processedDays = 0;
+        let employeeName = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          
+          // Process complete lines
+          for (let i = 0; i < lines.length - 1; i++) {
+            const line = lines[i];
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                
+                if (data.type === 'start') {
+                  totalDays = data.total;
+                  document.getElementById('progressSection').classList.remove('hidden');
+                } else if (data.type === 'progress') {
+                  processedDays = data.current;
+                  const percentage = Math.round((processedDays / totalDays) * 100);
+                  document.getElementById('progressBar').style.width = percentage + '%';
+                  document.getElementById('progressText').textContent = percentage + '%';
+                  document.getElementById('progressCounter').textContent = `Processed ${processedDays} of ${totalDays} days...`;
+                  
+                  // If there's day data, add to records and update calendar in real-time
+                  if (data.dayData) {
+                    dailyRecords[data.date] = data.dayData;
+                    updateCalendarInRealTime(dailyRecords, yearMonth);
+                  }
+                } else if (data.type === 'complete') {
+                  employeeName = data.name;
+                  document.getElementById('modalEmployeeName').textContent = employeeName;
+                  document.getElementById('modalEmployeeCode').textContent = empCode;
+                  document.getElementById('progressSection').classList.add('hidden');
+                  // Final calendar render
+                  displayEmployeeDetailCalendar(dailyRecords, yearMonth);
+                } else if (data.type === 'error') {
+                  console.error('Stream error:', data.message);
+                }
+              } catch (e) {
+                console.error('Error parsing stream data:', e);
+              }
+            }
+          }
+          
+          // Keep incomplete line in buffer
+          buffer = lines[lines.length - 1];
+        }
+      } catch (error) {
+        document.getElementById('progressSection').classList.add('hidden');
+        document.getElementById('calendarContainer').innerHTML = '<p class="text-red-600">Failed to load</p>';
+        console.error('Error loading employee detail:', error);
+      }
+    }
+
+    function updateCalendarInRealTime(dailyRecords, yearMonth) {
+      const [year, month] = yearMonth.split('-');
       const daysInMonth = new Date(year, month, 0).getDate();
       const firstDay = new Date(year, month - 1, 1).getDay();
       const statusColors = { 'PRESENT': 'bg-green-100', 'SHORT': 'bg-yellow-100', 'ABSENT': 'bg-red-100' };
 
-      let html = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="bg-gray-200 p-2 text-center font-semibold">${d}</div>`).join('');
+      let html = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="bg-gray-200 p-2 text-center font-semibold text-sm">${d}</div>`).join('');
       for (let i = 0; i < firstDay; i++) html += '<div class="p-2 bg-gray-50"></div>';
       
       for (let day = 1; day <= daysInMonth; day++) {
         const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const record = employeeData.dailyRecords[date];
+        const record = dailyRecords[date];
         if (record) {
           const inTime = record.first_ts || '-';
           const outTime = record.last_ts || '-';
-          html += `<div class="p-2 bg-white border"><div class="font-semibold">${day}</div><div class="${statusColors[record.status] || 'bg-gray-100'} text-xs p-1 rounded">${record.status}</div><div class="text-xs">IN: ${inTime}</div><div class="text-xs">OUT: ${outTime}</div><div class="text-xs border-t pt-1 mt-1">${record.duration}</div></div>`;
+          html += `<div class="p-2 bg-white border text-xs"><div class="font-semibold">${day}</div><div class="${statusColors[record.status] || 'bg-gray-100'} text-xs p-1 rounded mb-1">${record.status}</div><div>IN: ${inTime}</div><div>OUT: ${outTime}</div><div class="border-t pt-1 mt-1">${record.duration}</div></div>`;
         } else {
-          html += `<div class="p-2 bg-white border"><div class="font-semibold">${day}</div><div class="text-xs text-gray-400">No data</div></div>`;
+          html += `<div class="p-2 bg-gray-50 border text-xs"><div class="font-semibold">${day}</div><div class="text-gray-300">Loading...</div></div>`;
+        }
+      }
+      document.getElementById('calendarContainer').innerHTML = html;
+    }
+
+    function displayEmployeeDetailCalendar(dailyRecords, yearMonth) {
+      const [year, month] = yearMonth.split('-');
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const firstDay = new Date(year, month - 1, 1).getDay();
+      const statusColors = { 'PRESENT': 'bg-green-100', 'SHORT': 'bg-yellow-100', 'ABSENT': 'bg-red-100' };
+
+      let html = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="bg-gray-200 p-2 text-center font-semibold text-sm">${d}</div>`).join('');
+      for (let i = 0; i < firstDay; i++) html += '<div class="p-2 bg-gray-50"></div>';
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const record = dailyRecords[date];
+        if (record) {
+          const inTime = record.first_ts || '-';
+          const outTime = record.last_ts || '-';
+          html += `<div class="p-2 bg-white border text-xs"><div class="font-semibold">${day}</div><div class="${statusColors[record.status] || 'bg-gray-100'} text-xs p-1 rounded mb-1">${record.status}</div><div>IN: ${inTime}</div><div>OUT: ${outTime}</div><div class="border-t pt-1 mt-1">${record.duration}</div></div>`;
+        } else {
+          html += `<div class="p-2 bg-gray-50 border text-xs"><div class="font-semibold">${day}</div><div class="text-gray-400">-</div></div>`;
         }
       }
       document.getElementById('calendarContainer').innerHTML = html;
@@ -385,6 +516,8 @@
     let allEmployees = [];
     let dailyAttendanceData = [];
     let monthlyEmployeeData = [];
+    let currentExportMonth = null;
+    let exportStartTime = null;
 
     async function loadEmployees() {
       const loadingSection = document.getElementById('employeeLoadingSection');
@@ -414,7 +547,14 @@
         return;
       }
 
-      tbody.innerHTML = employees.map(emp => {
+      // Sort: active employees first, then inactive
+      const sorted = [...employees].sort((a, b) => {
+        if (a.status === 'active' && b.status !== 'active') return -1;
+        if (a.status !== 'active' && b.status === 'active') return 1;
+        return 0;
+      });
+
+      tbody.innerHTML = sorted.map(emp => {
         const isActive = emp.status === 'active';
         const statusColor = isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
         const buttonColor = isActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700';
@@ -632,6 +772,124 @@
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Add Employee';
+      }
+    }
+
+    // ==================== EXPORT FUNCTIONS ====================
+    
+    function handleExportClick() {
+      if (!monthlyEmployeeData || monthlyEmployeeData.length === 0) {
+        alert('No employee data to export. Please load monthly attendance first.');
+        return;
+      }
+
+      const monthInput = document.getElementById('monthInput').value;
+      if (!monthInput) {
+        alert('Please select a month first.');
+        return;
+      }
+
+      currentExportMonth = monthInput;
+      openExportModal();
+      startExport();
+    }
+
+    function openExportModal() {
+      document.getElementById('exportProgressModal').classList.remove('hidden');
+      document.getElementById('closeExportModalBtn').disabled = true;
+      resetExportProgress();
+    }
+
+    function closeExportModal() {
+      document.getElementById('exportProgressModal').classList.add('hidden');
+      document.getElementById('closeExportModalBtn').disabled = false;
+    }
+
+    function resetExportProgress() {
+      document.getElementById('exportProgressBar').style.width = '0%';
+      document.getElementById('exportProgressPercent').textContent = '0%';
+      document.getElementById('exportProgressCounter').textContent = 'Processing 0 of 0 employees...';
+      document.getElementById('exportETA').textContent = 'ETA: calculating...';
+    }
+
+    async function startExport() {
+      try {
+        exportStartTime = Date.now();
+        const employees = monthlyEmployeeData.map(e => e.pin);
+        const totalEmployees = employees.length;
+
+        const response = await fetch('/api/export-monthly-attendance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            yearMonth: currentExportMonth,
+            employees: employees
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Export failed');
+        }
+
+        // Simulate progress updates
+        let processed = 0;
+        const progressInterval = setInterval(() => {
+          if (processed < totalEmployees) {
+            processed = Math.min(processed + Math.random() * 15, totalEmployees - 1);
+            updateExportProgress(Math.ceil(processed), totalEmployees);
+          }
+        }, 100);
+
+        // Convert response to blob and trigger download
+        const blob = await response.blob();
+        clearInterval(progressInterval);
+
+        // Update to 100%
+        updateExportProgress(totalEmployees, totalEmployees);
+
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `attendance_${currentExportMonth}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        // Close modal after 1.5 seconds
+        setTimeout(() => {
+          document.getElementById('exportStatus').innerHTML = '<p class="text-green-600 font-medium">✓ Export completed successfully!</p>';
+          setTimeout(closeExportModal, 1500);
+        }, 500);
+
+      } catch (error) {
+        console.error('Export error:', error);
+        document.getElementById('exportStatus').innerHTML = '<p class="text-red-600 font-medium">✗ Export failed. Please try again.</p>';
+        document.getElementById('closeExportModalBtn').disabled = false;
+      }
+    }
+
+    function updateExportProgress(processed, total) {
+      const percentage = Math.round((processed / total) * 100);
+      const elapsed = Date.now() - exportStartTime;
+      const rate = processed / (elapsed / 1000); // employees per second
+      const remaining = (total - processed) / rate;
+      
+      document.getElementById('exportProgressBar').style.width = percentage + '%';
+      document.getElementById('exportProgressPercent').textContent = percentage + '%';
+      document.getElementById('exportProgressCounter').textContent = `Processing ${processed} of ${total} employees...`;
+      
+      if (rate > 0 && remaining > 0) {
+        const etaSeconds = Math.ceil(remaining);
+        const etaMinutes = Math.floor(etaSeconds / 60);
+        const etaSecs = etaSeconds % 60;
+        
+        if (etaMinutes > 0) {
+          document.getElementById('exportETA').textContent = `ETA: ${etaMinutes}m ${etaSecs}s remaining`;
+        } else {
+          document.getElementById('exportETA').textContent = `ETA: ${etaSecs}s remaining`;
+        }
       }
     }
   </script>
